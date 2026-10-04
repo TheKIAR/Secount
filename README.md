@@ -8,21 +8,13 @@ Secount is a cross-platform **Kotlin + Compose Multiplatform** app for Windows a
 
 ## ✨ Real runtime preview
 
-These are captured from the **running Secount desktop application**, not mockups.
+This is captured from the **running Secount desktop application**, not a mockup.
 
-### 🔐 Locked screen
+### 🏠 Home screen
 
-![Secount locked screen](https://raw.githubusercontent.com/TheKIAR/Secount/main/assets/runtime-locked.png)
+![Secount home screen](https://raw.githubusercontent.com/TheKIAR/Secount/main/assets/runtime-screenshot.png)
 
-### 💗 Unlocked app
-
-![Secount unlocked screen](https://raw.githubusercontent.com/TheKIAR/Secount/main/assets/runtime-unlocked.png)
-
-### 🎬 Lock → PIN → App demo
-
-![Secount real runtime GIF](https://raw.githubusercontent.com/TheKIAR/Secount/main/assets/demo.gif)
-
-The runtime demo uses the app's real PIN-lock flow with the default demo PIN **1234**, then unlocks into the full application. The GitHub Actions bot captures and commits fresh media automatically.
+GitHub Actions automatically launches the current desktop app normally and captures a fresh home-screen screenshot.
 
 ## 💗 Why Secount?
 
@@ -109,7 +101,7 @@ run.bat
 - **Android**
 - **Desktop JVM**
 - **ZXing** for QR generation
-- **GitHub Actions** for tests, builds and runtime-media capture
+- **GitHub Actions** for tests, builds and home-screen runtime capture
 
 ## 🧱 Project structure
 
@@ -152,10 +144,8 @@ GitHub Actions automatically:
 - Builds `Secount.jar`.
 - Builds `Secount.exe`.
 - Builds `Secount-debug.apk`.
-- Captures the **locked desktop runtime**.
-- Captures the **unlocked desktop runtime**.
-- Captures an **animated lock → PIN → app GIF**.
-- Commits updated runtime media back to the repository using `github-actions[bot]`.
+- Captures the **current normal home screen** from the running desktop application.
+- Commits the fresh home-screen media back to the repository using `github-actions[bot]`.
 
 ## 👨‍💻 Author
 
