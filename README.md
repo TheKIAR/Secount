@@ -13,8 +13,10 @@ This is captured from the **running Secount desktop application**, not a mockup.
 ### 🏠 Home screen
 
 <p align="center">
-  <img src="https://github.com/TheKIAR/Secount/blob/main/assets/runtime-screenshot.png?raw=true&v=c70f34dac218926283ddd611f6e45726b3100ce3" alt="Secount home screen" width="720">
+  <img src="./assets/runtime-screenshot.png" alt="Secount home screen" width="720">
 </p>
+
+> 🏠 This is a verified runtime home-screen capture from the desktop application. The media is intentionally kept stable so the README always has a reliable preview.
 
 GitHub Actions automatically launches the current desktop app normally and captures a fresh home-screen screenshot.
 
