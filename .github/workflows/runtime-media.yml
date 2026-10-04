@@ -46,8 +46,7 @@ jobs:
           trap 'kill $XVFB_PID 2>/dev/null || true' EXIT
           sleep 2
 
-          # Start Secount normally. No forced lock preference is created:
-          # this capture is the app's current home screen.
+          # Start Secount normally. No forced lock preference is created.
           gradle -p android :desktopApp:run --no-daemon > /tmp/secount.log 2>&1 &
           APP_PID=$!
 
@@ -69,11 +68,12 @@ jobs:
           fi
 
           sleep 5
-          xdotool windowactivate --sync "$WID"
-          sleep 2
 
-          # Capture the actual normal home screen shown by the running app.
-          import -window root assets/runtime-screenshot.png
+          # Do NOT use windowactivate: the GitHub Actions Xvfb window manager
+          # does not support _NET_ACTIVE_WINDOW. Capture the actual Secount
+          # window directly so the README image contains the app, not the
+          # runner desktop/background.
+          import -window "$WID" assets/runtime-screenshot.png
           test -s assets/runtime-screenshot.png
 
           kill "$APP_PID" 2>/dev/null || true
@@ -89,6 +89,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No home-screen media changes."
           else
-            git commit -m "Replace runtime lock media with Secount home screen"
+            git commit -m "Capture and show Secount home screen"
             git push
           fi
