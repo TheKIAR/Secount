@@ -12,7 +12,9 @@ This is captured from the **running Secount desktop application**, not a mockup.
 
 ### 🏠 Home screen
 
-![Secount home screen](https://raw.githubusercontent.com/TheKIAR/Secount/main/assets/runtime-screenshot.png)
+<p align="center">
+  <img src="https://github.com/TheKIAR/Secount/blob/main/assets/runtime-screenshot.png?raw=true&v=c70f34dac218926283ddd611f6e45726b3100ce3" alt="Secount home screen" width="720">
+</p>
 
 GitHub Actions automatically launches the current desktop app normally and captures a fresh home-screen screenshot.
 
@@ -109,7 +111,7 @@ run.bat
 android/
 ├── shared/       # Shared logic + Compose UI
 ├── androidApp/   # Android entry point
-└── desktopApp/  # Windows / desktop entry point
+└── desktopApp/   # Windows / desktop entry point
 ```
 
 The shared module contains the event model, storage, pairing/sync logic, PIN protection and the complete Compose UI.
