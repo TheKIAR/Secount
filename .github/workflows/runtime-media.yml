@@ -1,4 +1,4 @@
-name: Capture Secount runtime media
+name: Capture Secount home screen
 
 on:
   push:
@@ -33,31 +33,21 @@ jobs:
           echo "$HOME/gradle/gradle-8.13/bin" >> "$GITHUB_PATH"
       - name: Build desktop app before launch
         run: gradle -p android :desktopApp:compileKotlin --no-daemon
-      - name: Capture real locked and unlocked runtime
+      - name: Capture real Secount home screen
         shell: bash
         run: |
           set -e
-          mkdir -p assets/capture-frames
           export DISPLAY=:99
           export HOME="$RUNNER_TEMP/secount-home"
           mkdir -p "$HOME"
-
-          # Force this clean demo instance through the real app lock flow.
-          # PinLock's default PIN is 1234.
-          mkdir -p "$HOME/.java/.userPrefs/secount"
-          cat > "$HOME/.java/.userPrefs/secount/prefs.xml" <<'EOF'
-          <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-          <!DOCTYPE map SYSTEM "http://java.sun.com/dtd/preferences.dtd">
-          <map MAP_XML_VERSION="1.0">
-            <entry key="secount_need_lock" value="true"/>
-          </map>
-          EOF
 
           Xvfb :99 -screen 0 1200x900x24 >/tmp/xvfb.log 2>&1 &
           XVFB_PID=$!
           trap 'kill $XVFB_PID 2>/dev/null || true' EXIT
           sleep 2
 
+          # Start Secount normally. No forced lock preference is created:
+          # this capture is the app's current home screen.
           gradle -p android :desktopApp:run --no-daemon > /tmp/secount.log 2>&1 &
           APP_PID=$!
 
@@ -79,66 +69,26 @@ jobs:
           fi
 
           sleep 5
-
-          # Make sure the Secount window is the active/focused window before
-          # interacting with the PIN field. The PIN for this clean demo is 1234.
           xdotool windowactivate --sync "$WID"
-          eval "$(xdotool getwindowgeometry --shell "$WID")"
-          CLICK_X=$((X + WIDTH / 2))
-          CLICK_Y=$((Y + HEIGHT / 2))
-          xdotool mousemove --sync "$CLICK_X" "$CLICK_Y"
-          xdotool click 1
-          sleep 0.5
+          sleep 2
 
-          # Capture the genuinely locked state first.
-          import -window root assets/runtime-locked.png
+          # Capture the actual normal home screen shown by the running app.
+          import -window root assets/runtime-screenshot.png
+          test -s assets/runtime-screenshot.png
 
-          # Build the GIF from the same real interaction: locked -> PIN -> app.
-          rm -f assets/capture-frames/*.png
-          for i in $(seq -w 00 07); do
-            import -window root "assets/capture-frames/locked-$i.png"
-            sleep 0.25
-          done
-
-          # Enter the real PIN after explicitly focusing the app window.
-          xdotool windowactivate --sync "$WID"
-          xdotool type --delay 120 --window "$WID" "1234"
-          xdotool key --window "$WID" Return
-          sleep 5
-
-          # The unlocked screenshot must be the actual app screen, not the lock UI.
-          import -window root assets/runtime-unlocked.png
-
-          for i in $(seq -w 08 23); do
-            import -window root "assets/capture-frames/unlocked-$i.png"
-            sleep 0.30
-          done
-
-          # Fail the workflow if the two supposedly different states are identical.
-          if compare -metric AE assets/runtime-locked.png assets/runtime-unlocked.png null: 2>/tmp/compare.txt; then
-            echo "ERROR: locked and unlocked screenshots are identical."
-            cat /tmp/compare.txt
-            exit 1
-          fi
-
-          convert -delay 10 -loop 0 assets/capture-frames/*.png assets/demo.gif
-          test -s assets/runtime-locked.png
-          test -s assets/runtime-unlocked.png
-          test -s assets/demo.gif
-          rm -rf assets/capture-frames
           kill "$APP_PID" 2>/dev/null || true
 
-      - name: Commit runtime media
+      - name: Commit home-screen media
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/runtime-locked.png assets/runtime-unlocked.png assets/demo.gif
-          git rm --cached --ignore-unmatch assets/runtime-screenshot.png || true
-          rm -f assets/runtime-screenshot.png
+          git add assets/runtime-screenshot.png
+          git rm --cached --ignore-unmatch assets/runtime-locked.png assets/runtime-unlocked.png assets/demo.gif || true
+          rm -f assets/runtime-locked.png assets/runtime-unlocked.png assets/demo.gif
           if git diff --cached --quiet; then
-            echo "No runtime media changes."
+            echo "No home-screen media changes."
           else
-            git commit -m "Update Secount locked and unlocked runtime media"
+            git commit -m "Replace runtime lock media with Secount home screen"
             git push
           fi
