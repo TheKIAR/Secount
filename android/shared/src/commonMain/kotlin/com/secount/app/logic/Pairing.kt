@@ -37,14 +37,53 @@ object PairCrypto {
         return sha256("secount-pair|$x|$y".encodeToByteArray())
     }
 
+    /**
+     * Authenticated envelope for relay traffic.
+     *
+     * ENC2 adds an HMAC-SHA-256 tag over the nonce and ciphertext. This
+     * prevents an attacker who can write to the public relay topic from
+     * silently modifying a partner message. ENC1 remains readable for
+     * backward compatibility with older local data.
+     */
     fun encryptToHex(key: ByteArray, plain: String): String {
-        val nonce = ByteArray(8)
+        val nonce = ByteArray(16)
         var v = nowSec() xor Random.nextLong()
         for (i in nonce.indices) {
             v = v * 6364136223846793005L + 1442695040888963407L
             nonce[i] = ((v ushr 33) and 0xFF).toByte()
         }
         val src = plain.encodeToByteArray()
+        val out = xorStream(key, nonce, src)
+        val tag = hmacSha256(key, nonce + out)
+        return "ENC2." + hex(nonce) + "." + hex(out) + "." + hex(tag)
+    }
+
+    fun decryptHex(key: ByteArray, s: String): String? {
+        return try {
+            if (s.startsWith("ENC2.")) {
+                val p = s.removePrefix("ENC2.").split('.')
+                if (p.size != 3) return null
+                val nonce = unhex(p[0]) ?: return null
+                val cipher = unhex(p[1]) ?: return null
+                val tag = unhex(p[2]) ?: return null
+                if (nonce.size != 16 || tag.size != 32) return null
+                val expected = hmacSha256(key, nonce + cipher)
+                if (!constantEquals(expected, tag)) return null
+                xorStream(key, nonce, cipher).decodeToString()
+            } else if (s.startsWith("ENC1.")) {
+                val p = s.removePrefix("ENC1.").split('.')
+                if (p.size != 2) return null
+                val nonce = unhex(p[0]) ?: return null
+                val cipher = unhex(p[1]) ?: return null
+                if (nonce.size != 8) return null
+                xorStream(key, nonce, cipher).decodeToString()
+            } else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun xorStream(key: ByteArray, nonce: ByteArray, src: ByteArray): ByteArray {
         val out = ByteArray(src.size)
         var counter = 0
         var pos = 0
@@ -61,40 +100,26 @@ object PairCrypto {
                 pos++
             }
             counter++
+            if (counter > 100000) throw IllegalArgumentException("payload too large")
         }
-        return "ENC1." + hex(nonce) + "." + hex(out)
+        return out
     }
 
-    fun decryptHex(key: ByteArray, s: String): String? {
-        try {
-            if (!s.startsWith("ENC1.")) return null
-            val rest = s.removePrefix("ENC1.")
-            val dot = rest.indexOf('.')
-            if (dot < 0) return null
-            val nonce = unhex(rest.substring(0, dot)) ?: return null
-            val cipher = unhex(rest.substring(dot + 1)) ?: return null
-            val out = ByteArray(cipher.size)
-            var counter = 0
-            var pos = 0
-            while (pos < cipher.size) {
-                val ctr = ByteArray(4)
-                ctr[0] = ((counter ushr 24) and 0xFF).toByte()
-                ctr[1] = ((counter ushr 16) and 0xFF).toByte()
-                ctr[2] = ((counter ushr 8) and 0xFF).toByte()
-                ctr[3] = (counter and 0xFF).toByte()
-                val stream = sha256(key + nonce + ctr)
-                for (b in stream) {
-                    if (pos >= cipher.size) break
-                    out[pos] = (cipher[pos].toInt() xor b.toInt()).toByte()
-                    pos++
-                }
-                counter++
-                if (counter > 100000) return null
-            }
-            return out.decodeToString()
-        } catch (e: Exception) {
-            return null
-        }
+    private fun hmacSha256(key: ByteArray, data: ByteArray): ByteArray {
+        val block = 64
+        val k = if (key.size > block) sha256(key) else key.copyOf()
+        val kb = ByteArray(block)
+        k.copyInto(kb)
+        val inner = ByteArray(block) { (kb[it].toInt() xor 0x36).toByte() }
+        val outer = ByteArray(block) { (kb[it].toInt() xor 0x5c).toByte() }
+        return sha256(outer + sha256(inner + data))
+    }
+
+    private fun constantEquals(a: ByteArray, b: ByteArray): Boolean {
+        if (a.size != b.size) return false
+        var diff = 0
+        for (i in a.indices) diff = diff or (a[i].toInt() xor b[i].toInt())
+        return diff == 0
     }
 
     private fun hex(b: ByteArray): String {
