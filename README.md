@@ -169,11 +169,11 @@ See [`SECURITY.md`](./SECURITY.md) for the reporting policy and [`docs/ARCHITECT
 - [x] Runtime screenshot automation
 - [x] Automated tests and release artifact validation
 - [x] Security/dependency automation
-- [ ] Deeper security audit and platform hardening
-- [ ] Expanded countdown and synchronization test matrix
-- [ ] Further UI/component decomposition
-- [ ] Richer notifications and reminders
-- [ ] More release automation and product analytics
+- [x] Deeper security threat model and security regression coverage
+- [x] Expanded automated countdown/security test coverage and QA matrix
+- [ ] Further UI/component decomposition of the large App.kt
+- [ ] Richer platform-specific notifications and reminders
+- [x] Release metadata validation and generated-artifact guardrails
 
 ## 📚 Project documents
 
@@ -182,6 +182,10 @@ See [`SECURITY.md`](./SECURITY.md) for the reporting policy and [`docs/ARCHITECT
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md) — development expectations
 - [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — architecture and refactoring boundaries
 - [`docs/RELEASE.md`](./docs/RELEASE.md) — release process and artifact policy
+- [`docs/THREAT-MODEL.md`](./docs/THREAT-MODEL.md) — security boundaries and invariants
+- [`docs/SYNC.md`](./docs/SYNC.md) — pairing, sync and failure model
+- [`docs/TEST-MATRIX.md`](./docs/TEST-MATRIX.md) — automated and manual QA coverage
+- [`docs/PRODUCTION-READINESS.md`](./docs/PRODUCTION-READINESS.md) — production release gate
 
 ## 👨‍💻 Creator
 
