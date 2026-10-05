@@ -30,3 +30,11 @@ Security-sensitive areas include:
 ## Safe handling
 
 Never commit real secrets, credentials, private backups, production pairing codes, or personally identifying test data to the repository.
+
+## Security implementation notes
+
+- Pair and backup payloads now use an authenticated ENC2 envelope with HMAC-SHA-256 integrity protection.
+- ENC1 payloads remain readable for backward compatibility with existing local data.
+- Pairing still uses short human-entered codes and the public ntfy relay. The pairing code is not treated as a high-entropy cryptographic secret, so this is not equivalent to a fully audited end-to-end encrypted protocol.
+- PIN verification uses salted SHA-256, constant-time comparisons, and progressive lockout after repeated failures.
+- Do not place real credentials, private keys, production tokens, or personal backup data in the repository.
