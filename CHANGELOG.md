@@ -1,3 +1,17 @@
+## Unreleased
+
+### Security
+- Added authenticated ENC2 payloads with HMAC-SHA-256 integrity protection.
+- Kept ENC1 decryption compatibility for existing local data.
+- Added tamper and wrong-key regression tests.
+- Documented pairing-code security limitations.
+
+### Engineering
+- Added countdown/date edge-case regression coverage.
+- Added a dedicated QA matrix for Android, Windows, synchronization, notifications and release sign-off.
+- Made CI/release Windows artifact discovery version-independent.
+- Updated Android SDK setup action to v4.
+
 # Changelog
 
 All notable Secount product changes are recorded here.
