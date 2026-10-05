@@ -26,6 +26,15 @@ class LogicTest {
     }
 
     @Test
+    fun malformedJsonDoesNotCreateUsableEvent() {
+        val store = tempStore()
+        store.load()
+        val imported = store.importJson("[{\"id\":\"bad\",\"title\":\"\",\"date\":\"not-a-date\"}]")
+        assertEquals(0, imported)
+        assertEquals(0, store.items().size)
+    }
+
+    @Test
     fun jsonRoundTrip() {
         val store = tempStore()
         store.load()
