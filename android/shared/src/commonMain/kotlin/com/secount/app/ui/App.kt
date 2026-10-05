@@ -120,7 +120,7 @@ private const val NEED_LOCK_KEY = "secount_need_lock"
 private const val MUTED_KEY = "secount_muted"
 private const val LANG_KEY = "secount_lang"
 private const val UPDATE_CHECK_KEY = "secount_update_checked_at"
-private const val APP_VERSION = "1.0.0"
+private const val APP_VERSION = "1.1.0"
 private const val RELEASES_URL = "https://github.com/TheKIAR/Secount/releases"
 
 private val LANGS = listOf("System", "en", "de", "fr", "es")
