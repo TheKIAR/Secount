@@ -52,3 +52,11 @@ Business logic should remain independently testable and should not depend on Com
 ## Platform principle
 
 Android and desktop should share the same product model and user experience. Platform adapters are used only where operating-system APIs differ, such as biometrics, file dialogs, notifications, and native packaging.
+
+## Security boundary
+
+Relay traffic is treated as untrusted. Pairing validates the sender identity before applying synchronized events, and payload encryption now includes authentication so tampered ciphertext is rejected. Local PIN protection and backup protection are separate concerns and must not be assumed to provide account-level identity or server-side access control.
+
+## Current technical debt
+
+ui/App.kt remains intentionally large and is the next major decomposition target. This document describes the desired boundaries; it does not claim that every boundary has already been extracted into a separate module.
