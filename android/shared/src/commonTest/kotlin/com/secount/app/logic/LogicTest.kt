@@ -106,6 +106,47 @@ class LogicTest {
         assertTrue(store.sortedByNext(LocalDate.now())[0].featured)
     }
 
+
+    @Test
+    fun recurringNextOccurrenceHandlesMonthEnd() {
+        val e = EventItem()
+        e.date = LocalDate.of(2026, 1, 31)
+        e.setRepeat("monthly")
+        assertEquals(LocalDate.of(2026, 2, 28), e.nextOccurrence(LocalDate.of(2026, 2, 1)))
+        assertEquals(LocalDate.of(2026, 3, 31), e.nextOccurrence(LocalDate.of(2026, 3, 1)))
+    }
+
+    @Test
+    fun weeklyOccurrencePreservesWeekday() {
+        val e = EventItem()
+        e.date = LocalDate.of(2026, 1, 5)
+        e.setRepeat("weekly")
+        assertEquals(LocalDate.of(2026, 1, 12), e.nextOccurrence(LocalDate.of(2026, 1, 6)))
+    }
+
+    @Test
+    fun countdownNeverUsesInvalidTime() {
+        val e = EventItem()
+        e.date = LocalDate.of(2030, 1, 1)
+        e.hour = 99
+        e.minute = -20
+        val target = e.targetDateTime(LocalDate.of(2029, 12, 31))
+        assertEquals(23, target.hour)
+        assertEquals(0, target.minute)
+    }
+
+    @Test
+    fun malformedJsonFallsBackToSafeDefaults() {
+        val e = EventItem.fromJson(
+            "{\"id\":\"x\",\"date\":\"not-a-date\",\"hour\":\"bad\",\"minute\":\"bad\"}"
+        )
+        assertEquals("x", e.id)
+        assertTrue(e.hour in 0..23)
+        assertTrue(e.minute in 0..59)
+        assertTrue(e.category.isNotBlank())
+        assertTrue(e.icon.isNotBlank())
+    }
+
     @Test
     fun passwordHashing() {
         // pure function: 64-char hex, deterministic, distinct per input
