@@ -67,7 +67,9 @@ jobs:
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           $jar = Get-ChildItem android/desktopApp/build/compose/jars/*.jar | Select-Object -First 1
           Copy-Item $jar.FullName "dist/Secount-${{ github.sha }}.jar"
-          Copy-Item "android/desktopApp/build/compose/binaries/main/exe/Secount-1.1.0.exe" "dist/Secount-${{ github.sha }}-windows.exe"
+          $exe = Get-ChildItem "android/desktopApp/build/compose/binaries/main/exe/*.exe" | Select-Object -First 1
+          if (-not $exe) { throw "Windows EXE was not produced" }
+          Copy-Item $exe.FullName "dist/Secount-${{ github.sha }}-windows.exe"
           Copy-Item "android/androidApp/build/outputs/apk/release/androidApp-release.apk" "dist/Secount-${{ github.sha }}-android.apk"
           Get-ChildItem dist | ForEach-Object { if ($_.Length -lt 1024) { throw "Artifact looks invalid: $($_.Name)" } }
           Get-FileHash dist/* -Algorithm SHA256 | Format-Table
