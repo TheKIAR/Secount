@@ -14,9 +14,9 @@ compose.desktop {
         mainClass = "com.secount.app.desktop.MainKt"
         nativeDistributions {
             packageName = "Secount"
-            packageVersion = "1.0.0"
-            vendor = "Secount"
-            description = "Secount (Secret + Count) - same UI on Windows and Android"
+            packageVersion = "1.1.0"
+            vendor = "Md. Ragib Ashhab"
+            description = "Secount — personal countdown and private-moment application"
             targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe)
             windows {
                 iconFile.set(project.file("secount.ico"))

@@ -1,47 +1,43 @@
 # Secount ♥ Countdown Studio
 
-**Se**cret + **Count** — a modern countdown app where moments can stay private until zero.
+**Se**cret + **Count** — a personal cross-platform countdown and private-moment application designed to keep important moments organized, synchronized, and private until the right time.
 
-Secount is a cross-platform **Kotlin + Compose Multiplatform** app for Windows and Android. The same shared UI and event model power both platforms.
+Secount is built with **Kotlin + Compose Multiplatform** for Windows and Android. Shared product logic and UI keep the two platforms aligned while platform adapters handle native capabilities.
 
 > Birthdays • Exams • Weddings • Holidays • Trips • Work deadlines • App launches • Game launches • Private surprises
 
-## ✨ Real runtime preview
+## ✨ Runtime preview
 
-This is captured from the **running Secount desktop application**, not a mockup.
-
-### 🏠 Home screen
+This image is captured from the **running Secount desktop application**, not a mockup.
 
 <p align="center">
-  <img src="./assets/runtime-screenshot.png" alt="Secount home screen" width="720">
+  <img src="./assets/runtime-screenshot.png" alt="Secount running desktop home screen" width="720">
 </p>
 
-> 🏠 This is a verified runtime home-screen capture from the desktop application. The media is intentionally kept stable so the README always has a reliable preview.
+GitHub Actions refreshes the runtime preview when the application source changes.
 
-GitHub Actions automatically launches the current desktop app normally and captures a fresh home-screen screenshot.
+## 💗 Product vision
 
-## 💗 Why Secount?
-
-Secount combines a normal countdown with a private-message experience. You can create a countdown for anything, optionally arm a secret message, and reveal it only when the countdown reaches zero.
+Secount is a personal product project focused on a simple idea: a countdown can be more meaningful when the moment, message, and people involved stay together in one experience.
 
 ### Core experience
 
-- **Modern Material UI** with soft surfaces, rounded cards and clear hierarchy.
-- **Valentine-first visual language** with a warm pink/rose palette, while keeping the interface clean and approachable.
+- **Modern Material 3 UI** with rounded surfaces and clear hierarchy.
+- **Valentine-first visual language** with a warm rose/pink identity while keeping the product usable beyond one occasion.
 - **Live countdowns** with days, hours, minutes and seconds.
 - **Mine / Inbox** views for personal countdowns and partner surprises.
-- **Letter-style secret reveal** that writes the message character by character.
-- **Explicit OPEN MESSAGE step** before a secret is revealed.
+- **Letter-style secret reveal** with an explicit OPEN MESSAGE step.
 - **Replies and conversation threads** with You / Partner labels.
 - **Delivered / Seen receipts** with timestamps.
-- **Search, filters and sorting** for larger countdown collections.
+- **Search, filters and sorting** for larger collections.
 - **List and Calendar views**.
-- **Per-countdown categories, icons and accent colors**.
+- **Categories, icons and accent colors** per countdown.
 - **Photo attachments** with synced thumbnails.
-- **6-letter pairing codes + QR / copy-paste pairing**.
-- **Offline retry and sync** for edits, replies, deletes and receipts.
+- **Six-letter pairing codes + QR / copy-paste pairing**.
+- **Offline retry and synchronization** for supported edits, replies, deletes and receipts.
 - **App PIN + biometric unlock** where supported.
 - **Backup and restore**, including optional encrypted backups.
+- **Android widget support**.
 - **Windows + Android** from one shared Kotlin/Compose codebase.
 
 ## 🔐 Private secret-message flow
@@ -49,27 +45,25 @@ Secount combines a normal countdown with a private-message experience. You can c
 1. Create a countdown.
 2. Enable **Secret message at zero**.
 3. Write the private message.
-4. Keep using the app normally — the secret remains sealed.
-5. At zero, the recipient gets the secret-message prompt.
+4. Continue using Secount normally while the message remains sealed.
+5. At zero, the recipient receives the secret-message prompt.
 6. **OPEN MESSAGE** starts the letter-style reveal.
 7. The recipient can reply inside the same conversation.
 
-The secret text is also automatically armed when text is entered, so accidentally forgetting the toggle does not leave the message behind as an ordinary public message.
-
-## 🤝 Partner pairing
+## 🤝 Partner pairing & sync
 
 Two Secount installations can connect using a six-letter pairing code.
 
-- Share your code or QR payload.
-- Enter your partner's code.
-- Both sides confirm the connection.
-- Countdown edits and deletes sync between paired devices.
-- Partner surprises remain hidden until their target day.
+- Share a code or QR payload.
+- Enter the partner code.
+- Confirm the connection on both sides.
+- Sync supported countdown edits, deletes, replies, and receipts.
+- Keep partner surprises hidden until their target time.
 - Disconnect requires agreement from both sides.
 
 ## 🎨 UI & themes
 
-The default **Valentine** theme is designed to feel romantic without looking like a novelty card:
+The default **Valentine** theme is designed to feel romantic without becoming a novelty card:
 
 - Soft warm background
 - High-contrast typography
@@ -78,45 +72,49 @@ The default **Valentine** theme is designed to feel romantic without looking lik
 - Compact status pills
 - Clear primary actions
 - Dark-mode support
-- Additional themes: Midnight Android, Ocean, Sunset, Forest, Lavender and Porcelain
+- Additional themes including Midnight Android, Ocean, Sunset, Forest, Lavender and Porcelain
 
 ## 📱 Platforms
 
 ### Windows
 
-`Secount.exe` is the packaged Windows application. The bundled runtime means users do not need to install Java separately.
-
-You can also run the desktop JAR with:
-
-```bat
-run.bat
-```
+The desktop target is packaged as a native Windows executable and a JVM JAR.
 
 ### Android
 
-`Secount-debug.apk` is the test APK and requires Android 8.0 / API 26 or newer.
+Android targets API 26+ and supports the shared Compose application plus the Secount widget.
+
+Production APKs are distributed through GitHub Releases; debug builds are intended for development/testing.
 
 ## 🛠️ Tech stack
 
-- **Kotlin**
-- **Jetpack Compose / Material 3**
-- **Compose Multiplatform**
-- **Gradle**
-- **Android**
-- **Desktop JVM**
+- **Kotlin 2.1.x**
+- **Compose Multiplatform / Material 3**
+- **Gradle 8.13**
+- **Android API 26–36**
+- **Desktop JVM / Windows packaging**
 - **ZXing** for QR generation
-- **GitHub Actions** for tests, builds and home-screen runtime capture
+- **Kotlin coroutines** for asynchronous work
+- **GitHub Actions** for testing, builds, runtime media and releases
+- **CodeQL + Dependabot** for automated security/dependency maintenance
 
 ## 🧱 Project structure
 
 ```text
 android/
-├── shared/       # Shared logic + Compose UI
-├── androidApp/   # Android entry point
-└── desktopApp/   # Windows / desktop entry point
+├── shared/       # Shared product logic, storage, sync, security and Compose UI
+├── androidApp/   # Android entry point, resources and widget integration
+└── desktopApp/   # Desktop entry point and Windows packaging
+
+docs/
+├── ARCHITECTURE.md
+└── RELEASE.md
+
+assets/
+└── runtime-screenshot.png
 ```
 
-The shared module contains the event model, storage, pairing/sync logic, PIN protection and the complete Compose UI.
+See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for architectural boundaries and refactoring guidance.
 
 ## ▶ Build locally
 
@@ -126,12 +124,11 @@ The shared module contains the event model, storage, pairing/sync logic, PIN pro
 build.bat
 ```
 
-This builds the desktop JAR and Windows executable.
-
-### Android APK
+### Android release APK
 
 ```bat
-android\build-apk.bat
+cd android
+gradle :androidApp:assembleRelease
 ```
 
 ### Shared tests
@@ -140,21 +137,57 @@ android\build-apk.bat
 gradle -p android :shared:desktopTest
 ```
 
-## ⚙️ Continuous integration
+## ⚙️ Engineering & CI
 
-GitHub Actions automatically:
+The repository separates validation, runtime-media capture and releases.
 
-- Runs the shared-logic test suite.
-- Builds `Secount.jar`.
-- Builds `Secount.exe`.
-- Builds `Secount-debug.apk`.
-- Captures the **current normal home screen** from the running desktop application.
-- Commits the fresh home-screen media back to the repository using `github-actions[bot]`.
+- Shared tests run automatically.
+- Desktop and Android release artifacts are built in CI.
+- Build artifacts are validated for basic integrity before publication.
+- Release artifacts receive SHA-256 checksums.
+- GitHub Releases are created from version tags.
+- CodeQL analyzes the Kotlin codebase.
+- Dependabot monitors Gradle and GitHub Actions dependencies.
+- Runtime media is generated from the actual desktop application.
 
-## 👨‍💻 Author
+Generated release binaries are intentionally treated as release artifacts rather than source files.
 
-**Md. Ragib Ashhab**  
-CSE Student • Java / Python • AI • Computer Graphics • Software Projects
+## 🔐 Security
+
+Security-sensitive areas include local storage, PIN protection, pairing/synchronization, backups, permissions, and CI/release integrity.
+
+See [`SECURITY.md`](./SECURITY.md) for the reporting policy and [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for engineering boundaries.
+
+## 🗺️ Roadmap
+
+- [x] Cross-platform Windows + Android foundation
+- [x] Shared Compose UI and event model
+- [x] Secret-message countdown flow
+- [x] Partner pairing and sync foundation
+- [x] Android widget
+- [x] Backup/restore foundation
+- [x] Runtime screenshot automation
+- [x] Automated tests and release artifact validation
+- [x] Security/dependency automation
+- [ ] Deeper security audit and platform hardening
+- [ ] Expanded countdown and synchronization test matrix
+- [ ] Further UI/component decomposition
+- [ ] Richer notifications and reminders
+- [ ] More release automation and product analytics
+
+## 📚 Project documents
+
+- [`CHANGELOG.md`](./CHANGELOG.md) — product and engineering changes
+- [`SECURITY.md`](./SECURITY.md) — security reporting policy
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — development expectations
+- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — architecture and refactoring boundaries
+- [`docs/RELEASE.md`](./docs/RELEASE.md) — release process and artifact policy
+
+## 👨‍💻 Creator
+
+**Md. Ragib Ashhab**
+
+Secount is a **personal software product project** — built, maintained, and evolved independently as part of a broader portfolio of software, AI, graphics, and engineering work.
 
 - 🌐 Portfolio: [ragibashhab.netlify.app](https://ragibashhab.netlify.app/)
 - 🔗 Linktree: [linktr.ee/RagibAshhab](https://linktr.ee/RagibAshhab)
@@ -163,4 +196,4 @@ CSE Student • Java / Python • AI • Computer Graphics • Software Projects
 
 ---
 
-*Building practical software, turning coursework into projects, and improving one release at a time.*
+*Secount — keep the moment. Protect the surprise. Let zero tell the story.*
