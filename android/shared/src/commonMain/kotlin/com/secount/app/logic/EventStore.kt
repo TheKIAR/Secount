@@ -58,8 +58,16 @@ class EventStore(dir: String, name: String = "events.json") {
                 sb.append("\n")
             }
             sb.append("]\n")
-            fs.write(file) { writeUtf8(sb.toString()) }
+            val tmp = "$file.tmp".toPath()
+            fs.write(tmp) { writeUtf8(sb.toString()) }
+            if (fs.exists(file)) fs.delete(file)
+            fs.atomicMove(tmp, file)
         } catch (ignored: Exception) {
+            try {
+                val tmp = "$file.tmp".toPath()
+                if (fs.exists(tmp)) fs.delete(tmp)
+            } catch (ignored2: Exception) {
+            }
         }
     }
 
