@@ -94,7 +94,8 @@ object PhotoPick {
 actual fun loadPhotoBitmap(name: String): androidx.compose.ui.graphics.ImageBitmap? {
     return try {
         if (name.isBlank()) return null
-        val f = if (name.contains("/") || name.contains("\\")) java.io.File(name) else java.io.File(photosDir(), name)
+        if (name.contains("/") || name.contains("\\")) return null
+        val f = java.io.File(photosDir(), name)
         if (!f.exists()) return null
         val opts = android.graphics.BitmapFactory.Options()
         opts.inSampleSize = 4
@@ -496,7 +497,8 @@ actual fun photoToB64(name: String): String? {
     return try {
         if (name.isBlank()) return null
         val ctx = AppCtx.app ?: return null
-        val f = if (name.contains("/") || name.contains("\\")) java.io.File(name) else java.io.File(photosDir(), name)
+        if (name.contains("/") || name.contains("\\")) return null
+        val f = java.io.File(photosDir(), name)
         if (!f.exists()) return null
         val opts = android.graphics.BitmapFactory.Options()
         opts.inJustDecodeBounds = true
