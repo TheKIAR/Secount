@@ -1,0 +1,74 @@
+name: Secount Quality Gate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "android/**"
+      - "docs/**"
+      - ".github/**"
+  pull_request:
+    paths:
+      - "android/**"
+      - "docs/**"
+      - ".github/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: secount-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate source and release metadata
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+
+      - name: Run shared tests
+        shell: pwsh
+        run: gradle -p android :shared:desktopTest --no-daemon
+
+      - name: Validate release version consistency
+        shell: pwsh
+        run: |
+          $appGradle = Get-Content android/androidApp/build.gradle -Raw
+          $desktopGradle = Get-Content android/desktopApp/build.gradle -Raw
+          $appKotlin = Get-Content android/shared/src/commonMain/kotlin/com/secount/app/ui/App.kt -Raw
+          $appVersion = [regex]::Match($appGradle, 'versionName\s*=\s*"([^"]+)"').Groups[1].Value
+          $desktopVersion = [regex]::Match($desktopGradle, 'packageVersion\s*=\s*"([^"]+)"').Groups[1].Value
+          $runtimeVersion = [regex]::Match($appKotlin, 'APP_VERSION\s*=\s*"([^"]+)"').Groups[1].Value
+          if (-not $appVersion -or -not $desktopVersion -or -not $runtimeVersion) { throw "Could not read all release versions" }
+          if ($appVersion -ne $desktopVersion -or $appVersion -ne $runtimeVersion) {
+            throw "Version mismatch: Android=$appVersion Desktop=$desktopVersion Runtime=$runtimeVersion"
+          }
+          Write-Host "Release version: $appVersion"
+
+      - name: Reject accidental generated release binaries
+        shell: pwsh
+        run: |
+          $tracked = git ls-files
+          $forbidden = $tracked | Where-Object {
+            $_ -match '(^|/)(Secount-(debug|release)|androidApp-release|build|dist)/' -or
+            $_ -match '\.(apk|exe|jar)$'
+          }
+          if ($forbidden) {
+            $forbidden | ForEach-Object { Write-Error "Generated binary/build output is tracked: $_" }
+            exit 1
+          }
