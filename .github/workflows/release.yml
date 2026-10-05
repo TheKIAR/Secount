@@ -46,7 +46,9 @@ jobs:
           $tag = "${{ github.event.inputs.tag || github.ref_name }}"
           $jar = Get-ChildItem android/desktopApp/build/compose/jars/*.jar | Select-Object -First 1
           Copy-Item $jar.FullName "dist/Secount-$tag.jar"
-          Copy-Item "android/desktopApp/build/compose/binaries/main/exe/Secount-1.1.0.exe" "dist/Secount-$tag-Windows.exe"
+          $exe = Get-ChildItem "android/desktopApp/build/compose/binaries/main/exe/*.exe" | Select-Object -First 1
+          if (-not $exe) { throw "Windows EXE was not produced" }
+          Copy-Item $exe.FullName "dist/Secount-$tag-Windows.exe"
           Copy-Item "android/androidApp/build/outputs/apk/release/androidApp-release.apk" "dist/Secount-$tag-Android.apk"
           Get-ChildItem dist | ForEach-Object { if ($_.Length -lt 1024) { throw "Artifact looks invalid: $($_.Name)" } }
           Get-FileHash dist/* -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  $($_.Path | Split-Path -Leaf)" } | Set-Content dist/SHA256SUMS.txt
