@@ -165,4 +165,64 @@ class LogicTest {
         assertFalse(h1 == PinLock.hash("1235"))
         assertTrue(h1.all { it in '0'..'9' || it in 'a'..'f' })
     }
+
+    @Test
+    fun storeSurvivesCorruptFile() {
+        val base = (FileSystem.SYSTEM_TEMPORARY_DIRECTORY / ("secount-corrupt-" + System.nanoTime())).toString()
+        FileSystem.SYSTEM.createDirectories(base.toPath())
+        FileSystem.SYSTEM.write((base + "/events.json").toPath()) { writeUtf8("{{{{not json at all") }
+        val store = EventStore(base)
+        store.load()
+        assertEquals(0, store.items().size)
+
+        FileSystem.SYSTEM.write((base + "/events.json").toPath()) { writeUtf8("[{\"id\":\"a\",\"title\":\"Half\"") }
+        store.load()
+        assertEquals(0, store.items().size)
+    }
+
+    @Test
+    fun duplicateImportMergesById() {
+        val store = tempStore()
+        store.load()
+        val one = "{\"id\":\"dup1\",\"title\":\"First\",\"date\":\"2030-06-01\"}"
+        assertEquals(1, store.importJson("[$one]"))
+        val two = "{\"id\":\"dup1\",\"title\":\"Second\",\"date\":\"2030-06-01\"}"
+        assertEquals(1, store.importJson("[$two]"))
+        assertEquals(1, store.items().size)
+        assertEquals("Second", store.byId("dup1")!!.title)
+    }
+
+    @Test
+    fun largeCollectionStaysConsistent() {
+        val store = tempStore()
+        store.load()
+        val today = LocalDate.now()
+        for (i in 0 until 500) {
+            val e = EventItem()
+            e.title = "Bulk $i"
+            e.date = today.plusDays((i % 365).toLong())
+            store.addOrUpdate(e)
+        }
+        assertEquals(500, store.items().size)
+        assertEquals(500, store.sortedByNext(today).size)
+        val json = store.exportJson()
+        val store2 = tempStore()
+        store2.load()
+        assertEquals(500, store2.importJson(json))
+        assertEquals(500, store2.items().size)
+    }
+
+    @Test
+    fun recurrenceAcrossDstBoundary() {
+        // Date math is timezone-free: DST transitions must not shift occurrences.
+        val e = EventItem()
+        e.date = LocalDate.of(2026, 3, 8)
+        e.setRepeat("yearly")
+        assertEquals(LocalDate.of(2027, 3, 8), e.nextOccurrence(LocalDate.of(2026, 3, 9)))
+        val m = EventItem()
+        m.date = LocalDate.of(2026, 1, 31)
+        m.setRepeat("monthly")
+        assertEquals(LocalDate.of(2026, 2, 28), m.nextOccurrence(LocalDate.of(2026, 2, 1)))
+        assertEquals(LocalDate.of(2026, 3, 31), m.nextOccurrence(LocalDate.of(2026, 3, 1)))
+    }
 }

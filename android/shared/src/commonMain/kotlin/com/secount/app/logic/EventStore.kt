@@ -137,9 +137,7 @@ class EventStore(dir: String, name: String = "events.json") {
             val t = json.trim()
             if (!t.startsWith("[") || !t.endsWith("]")) return 0
             val inside = t.substring(1, t.length - 1)
-            for (part in JsonUtil.splitTopLevel(inside)) {
-                val p = part.trim()
-                if (!p.startsWith("{")) continue
+            for (p in extractObjects(inside)) {
                 try {
                     val e = EventItem.fromJson(p)
                     if (e.title.isBlank()) continue
@@ -151,6 +149,37 @@ class EventStore(dir: String, name: String = "events.json") {
         } catch (ignored: Exception) {
         }
         return count
+    }
+
+    /** Extract top-level {...} objects (splitTopLevel strips a lone object into fields). */
+    private fun extractObjects(inside: String): List<String> {
+        val out = mutableListOf<String>()
+        var depth = 0
+        var inStr = false
+        var start = -1
+        var i = 0
+        while (i < inside.length) {
+            val c = inside[i]
+            if (inStr) {
+                if (c == '\\' && i + 1 < inside.length) i++
+                else if (c == '"') inStr = false
+            } else {
+                if (c == '"') inStr = true
+                else if (c == '{') {
+                    if (depth == 0) start = i
+                    depth++
+                } else if (c == '}') {
+                    depth--
+                    if (depth == 0 && start >= 0) {
+                        out.add(inside.substring(start, i + 1))
+                        start = -1
+                    }
+                    if (depth < 0) depth = 0
+                }
+            }
+            i++
+        }
+        return out
     }
 
     @Synchronized
