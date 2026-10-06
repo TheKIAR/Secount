@@ -6,6 +6,12 @@ Secount is built with **Kotlin + Compose Multiplatform** for Windows and Android
 
 > Birthdays • Exams • Weddings • Holidays • Trips • Work deadlines • App launches • Game launches • Private surprises
 
+<p align="center">
+  <img src="./assets/secount-logo.svg" alt="Secount — Count What Matters" width="720">
+</p>
+
+<p align="center"><strong>Count what matters.</strong><br>Private moments, polished countdowns, and partner-ready sync.</p>
+
 ## ✨ Runtime preview
 
 This image is captured from the **running Secount desktop application**, not a mockup.
