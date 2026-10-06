@@ -325,8 +325,8 @@ actual fun pickPhotoFile(onResult: (String?) -> Unit) {
 actual fun loadPhotoBitmap(name: String): androidx.compose.ui.graphics.ImageBitmap? {
     return try {
         if (name.isBlank()) return null
-        val f = if (name.contains("/") || name.contains("\\") || name.contains(":")) java.io.File(name)
-        else java.io.File(photosDir(), name)
+        if (name.contains("/") || name.contains("\\") || name.contains(":")) return null
+        val f = java.io.File(photosDir(), name)
         if (!f.exists()) return null
         val img = javax.imageio.ImageIO.read(f) ?: return null
         img.toComposeImageBitmap()
@@ -373,8 +373,8 @@ actual fun biometricAuthenticate(onResult: (Boolean) -> Unit) {
 actual fun photoToB64(name: String): String? {
     return try {
         if (name.isBlank()) return null
-        val f = if (name.contains("/") || name.contains("\\") || name.contains(":")) java.io.File(name)
-        else java.io.File(photosDir(), name)
+        if (name.contains("/") || name.contains("\\") || name.contains(":")) return null
+        val f = java.io.File(photosDir(), name)
         if (!f.exists()) return null
         var img = javax.imageio.ImageIO.read(f) ?: return null
         val maxSide = maxOf(img.width, img.height)
