@@ -26,4 +26,4 @@ Tagline: **Count what matters.**
 
 Keep the mark clear and simple. Prefer the deep violet background when presenting the full wordmark. Do not recolor the notification icon; Android requires a monochrome notification glyph.
 
-The Windows `.ico`/`.png` packaging assets remain a separate binary asset and should be regenerated from the approved mark before a desktop release refresh.
+The Windows `.ico`/`.png` packaging assets are generated from the approved mark (`assets/secount-mark.svg`) so desktop matches Android. The running desktop window and tray notification load `secount-icon.png` from shared desktop resources.

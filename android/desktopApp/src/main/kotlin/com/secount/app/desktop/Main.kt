@@ -37,6 +37,18 @@ fun main() {
         // Alt-Tab), never on a timer. App.kt polls this flag once per second.
         // File-dialog photo picking also drops focus — that must NOT lock.
         remember(window) {
+            // Taskbar/dock icon: the Secount brand mark (shared desktop resource).
+            try {
+                val stream = Thread.currentThread().contextClassLoader
+                    .getResourceAsStream("secount-icon.png")
+                if (stream != null) {
+                    stream.use {
+                        val icon = javax.imageio.ImageIO.read(it)
+                        if (icon != null) window.iconImage = icon
+                    }
+                }
+            } catch (ignored: Exception) {
+            }
             try {
                 window.addWindowFocusListener(object : WindowFocusListener {
                     override fun windowGainedFocus(e: WindowEvent?) {}

@@ -424,9 +424,15 @@ actual fun notifySecret(title: String, text: String) {
             @Suppress("DEPRECATION")
             android.app.Notification.Builder(ctx)
         }
+        val smallIcon = try {
+            val rid = ctx.resources.getIdentifier("ic_stat_secount", "drawable", ctx.packageName)
+            if (rid != 0) rid else android.R.drawable.ic_dialog_info
+        } catch (e: Exception) {
+            android.R.drawable.ic_dialog_info
+        }
         builder.setContentTitle(title)
             .setContentText(text)
-             .setSmallIcon(com.secount.app.R.drawable.ic_stat_secount)
+            .setSmallIcon(smallIcon)
             .setAutoCancel(true)
         if (pending != null) builder.setContentIntent(pending)
         try {

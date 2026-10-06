@@ -247,7 +247,15 @@ actual fun notifySecret(title: String, text: String) {
     try {
         if (!java.awt.SystemTray.isSupported()) return
         val tray = java.awt.SystemTray.getSystemTray()
-        val img = java.awt.image.BufferedImage(16, 16, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        val img: java.awt.Image = try {
+            val stream = Thread.currentThread().contextClassLoader
+                .getResourceAsStream("secount-icon.png")
+            val src = if (stream != null) stream.use { javax.imageio.ImageIO.read(it) } else null
+            if (src != null) src.getScaledInstance(16, 16, java.awt.Image.SCALE_SMOOTH)
+            else java.awt.image.BufferedImage(16, 16, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        } catch (ignored: Exception) {
+            java.awt.image.BufferedImage(16, 16, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        }
         val icon = java.awt.TrayIcon(img, "Secount")
         icon.isImageAutoSize = true
         try {
