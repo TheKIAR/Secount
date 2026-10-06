@@ -2,6 +2,7 @@ package com.secount.app.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -42,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.secount.app.logic.EventItem
+import com.secount.app.logic.EventStore
 import com.secount.app.logic.loadPhotoBitmap
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -303,5 +306,127 @@ internal fun EventCard(
             }
             }
         }
+    }
+}
+
+@Composable
+internal fun CalendarView(
+    month: LocalDate,
+    today: LocalDate,
+    store: EventStore,
+    myId: String,
+    selected: LocalDate?,
+    fontScale: Float = 1f,
+    onMonth: (LocalDate) -> Unit,
+    onDay: (LocalDate?) -> Unit
+) {
+    ElevatedCard(
+        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(22.dp)
+    ) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { onMonth(month.minusMonths(1)); onDay(null) }, modifier = Modifier.heightIn(min = 44.dp)) { Text("‹", fontSize = scaled(20.sp, fontScale)) }
+            Text(
+                month.month.name.lowercase().replaceFirstChar { it.uppercase() } + " ${month.year}",
+                fontWeight = FontWeight.Bold,
+                fontSize = scaled(16.sp, fontScale),
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = { onMonth(LocalDate.now().withDayOfMonth(1)) }, modifier = Modifier.heightIn(min = 44.dp)) { Text("Today", fontSize = scaled(13.sp, fontScale)) }
+            TextButton(onClick = { onMonth(month.plusMonths(1)); onDay(null) }, modifier = Modifier.heightIn(min = 44.dp)) { Text("›", fontSize = scaled(20.sp, fontScale)) }
+        }
+        Row(Modifier.fillMaxWidth()) {
+            for (d in listOf("M", "T", "W", "T", "F", "S", "S")) {
+                Text(
+                    d, modifier = Modifier.weight(1f),
+                    fontSize = scaled(11.sp, fontScale), fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        val first = month.withDayOfMonth(1)
+        // Monday-first offset
+        val offset = (first.dayOfWeek.value - 1) % 7
+        val len = month.lengthOfMonth()
+        var day = 1 - offset
+        repeat(6) {
+            Row(Modifier.fillMaxWidth()) {
+                repeat(7) {
+                    if (day in 1..len) {
+                        val d = LocalDate.of(month.year, month.month, day)
+                        var n = 0
+                        for (e in store.items()) {
+                            if (e.isForMe(myId) && !e.isDueToday(today)) continue
+                            if (e.effectiveRepeat() == "once") {
+                                if (e.date == d) n++
+                            } else if (e.nextOccurrence(today) == d || e.isDueToday(d)) n++
+                        }
+                        val sel = selected == d
+                        val isToday = d == today
+                        Box(
+                            Modifier.weight(1f).padding(2.dp)
+                                .heightIn(min = 44.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(
+                                    when {
+                                        sel -> MaterialTheme.colorScheme.primary
+                                        isToday -> MaterialTheme.colorScheme.primaryContainer
+                                        n > 0 -> MaterialTheme.colorScheme.surfaceContainerHighest
+                                        else -> Color.Transparent
+                                    }
+                                )
+                                .clickable { onDay(if (sel) null else d) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    "$day",
+                                    fontSize = scaled(14.sp, fontScale),
+                                    fontWeight = if (isToday || sel) FontWeight.Bold else FontWeight.Normal,
+                                    color = when {
+                                        sel -> MaterialTheme.colorScheme.onPrimary
+                                        isToday -> MaterialTheme.colorScheme.primary
+                                        else -> MaterialTheme.colorScheme.onSurface
+                                    }
+                                )
+                                if (n > 0) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        repeat(minOf(n, 3)) {
+                                            Box(
+                                                Modifier.size(5.dp).clip(CircleShape)
+                                                    .background(if (sel) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                    }
+                    day++
+                }
+            }
+            if (day > len) return@repeat
+        }
+        if (selected != null) {
+            Spacer(Modifier.height(6.dp))
+            Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
+                Text(
+                    "Showing $selected — tap the date again to show everything.",
+                    fontSize = scaled(12.sp, fontScale),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
+                )
+            }
+        } else {
+            Text(
+                "Tap a date to filter • dots mean countdowns land there",
+                fontSize = scaled(11.sp, fontScale),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
     }
 }

@@ -7,10 +7,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -22,19 +25,26 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.secount.app.logic.PairStore
 import com.secount.app.logic.PinLock
+import com.secount.app.logic.SyncEngine
 import com.secount.app.logic.biometricAuthenticate
 import com.secount.app.logic.biometricAvailable
+import com.secount.app.logic.copyToClipboard
+import com.secount.app.logic.getClipboardText
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** PIN lock screens (extracted from App.kt, no behavior change). */
 
@@ -199,6 +209,185 @@ internal fun PinDialog(pin: PinLock, onClose: () -> Unit) {
                 }
                 TextButton(onClick = onClose) { Text(Lang.t("close")) }
             }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun ConnectDialog(
+    pair: PairStore,
+    engine: SyncEngine,
+    onClose: () -> Unit,
+    onNotice: (String) -> Unit,
+    onSeverPrompt: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var code by remember { mutableStateOf("") }
+    var err by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var incoming by remember { mutableStateOf(pair.incoming()) }
+    var pending by remember { mutableStateOf(pair.pendingCode()) }
+    var paired by remember { mutableStateOf(pair.isPaired()) }
+    var waiting by remember { mutableStateOf(pair.wantSever()) }
+
+    fun reload() {
+        incoming = pair.incoming()
+        pending = pair.pendingCode()
+        paired = pair.isPaired()
+        waiting = pair.wantSever()
+    }
+
+    // Auto-sync every 5s while the dialog is open so the second device
+    // pairs without having to press SYNC. Stops once linked (background
+    // 25s loop takes over), but keeps watching for incoming requests.
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(5_000)
+            try {
+                val res = engine.syncNow()
+                reload()
+                if (res.justPaired) onNotice("Connected! You can now send countdowns to each other.")
+                if (res.severAsked) onSeverPrompt()
+            } catch (ignored: Exception) {
+            }
+        }
+    }
+
+    var showQr by remember { mutableStateOf(false) }
+    var copiedTick by remember { mutableStateOf(0) }
+    val myPairText = remember(pair.myCode, pair.accountId) { pairingText(pair.myCode, pair.accountId) }
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text(Lang.t("connTitle")) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(Lang.t("yourCode"), fontWeight = FontWeight.Bold)
+                Text(pair.myCode, fontSize = 30.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    Lang.t("connHint"),
+                    fontSize = 12.sp
+                )
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = {
+                        try {
+                            copyToClipboard(myPairText)
+                        } catch (ignored: Exception) {
+                        }
+                        copiedTick++
+                    }) { Text(Lang.t("copy")) }
+                    OutlinedButton(onClick = { showQr = !showQr }) {
+                        Text(if (showQr) Lang.t("hideQr") else Lang.t("showQr"))
+                    }
+                }
+                if (copiedTick > 0) Text(Lang.t("copied"), fontSize = 12.sp, color = Success)
+                if (showQr) {
+                    Spacer(Modifier.height(6.dp))
+                    QrCode(myPairText)
+                    Spacer(Modifier.height(4.dp))
+                    Text(myPairText, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                    Spacer(Modifier.height(2.dp))
+                    Text(Lang.t("scanHint"), fontSize = 12.sp)
+                }
+                if (paired) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("✉ Connected to ${pair.partnerCode()}", fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    if (waiting) {
+                        Text("Waiting for your partner to agree to disconnect…", fontSize = 12.sp)
+                    } else {
+                        OutlinedButton(onClick = {
+                            busy = true
+                            scope.launch {
+                                val ok = engine.requestSever()
+                                busy = false
+                                reload()
+                                onNotice(if (ok) "Disconnect requested. It ends only if your partner also agrees." else "Offline — request will be retried on next sync.")
+                            }
+                        }) { Text("DISCONNECT") }
+                    }
+                } else {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        code, {
+                            // Accept pasted SECOUNT1:... payloads or plain codes.
+                            val parsed = parsePairCode(it)
+                            code = if (parsed != null && it.contains(":")) parsed
+                            else it.uppercase().filter { c -> c.isLetterOrDigit() || c == ':' }.take(32)
+                            err = null
+                        },
+                        label = { Text(Lang.t("pairText")) },
+                        placeholder = { Text(Lang.t("partnerCode")) },
+                        singleLine = true
+                    )
+                    if (err != null) Text(err!!, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                    Spacer(Modifier.height(4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = {
+                            val parsed = parsePairCode(code)
+                            if (parsed == null) {
+                                err = Lang.t("partnerCode")
+                                return@Button
+                            }
+                            if (parsed == pair.myCode) {
+                                err = Lang.t("partnerCode")
+                                return@Button
+                            }
+                            code = parsed
+                            busy = true
+                            scope.launch {
+                                val ok = engine.sendPairRequest(parsed)
+                                busy = false
+                                reload()
+                                onNotice(
+                                    if (ok) "Request sent to $parsed. Ask them to enter YOUR code (${pair.myCode}) to complete."
+                                    else "Offline — couldn't send. Try Sync later."
+                                )
+                            }
+                        }) { Text(if (busy) "…" else Lang.t("sendReq")) }
+                        OutlinedButton(onClick = {
+                            try {
+                                val clip = getClipboardText() ?: ""
+                                val parsed = parsePairCode(clip)
+                                if (parsed != null) {
+                                    code = parsed
+                                    err = null
+                                } else {
+                                    code = clip.uppercase().take(32)
+                                }
+                            } catch (ignored: Exception) {
+                            }
+                        }) { Text(Lang.t("paste")) }
+                    }
+                    if (pending.isNotEmpty()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text("Waiting on $pending… auto-retrying every few seconds. Keep this open.", fontSize = 12.sp)
+                    }
+                    if (incoming.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text("Wants to connect:", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        for (req in incoming) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(req.code, fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f))
+                                TextButton(onClick = {
+                                    code = req.code
+                                }) { Text("→") }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                scope.launch {
+                    engine.syncNow()
+                    reload()
+                    onClose()
+                }
+            }) { Text(Lang.t("syncClose")) }
         }
     )
 }
