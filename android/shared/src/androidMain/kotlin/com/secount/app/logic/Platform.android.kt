@@ -426,7 +426,7 @@ actual fun notifySecret(title: String, text: String) {
         }
         builder.setContentTitle(title)
             .setContentText(text)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+             .setSmallIcon(com.secount.app.R.drawable.ic_stat_secount)
             .setAutoCancel(true)
         if (pending != null) builder.setContentIntent(pending)
         try {
