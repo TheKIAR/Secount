@@ -55,7 +55,7 @@ jobs:
 
           WID=""
           for i in $(seq 1 180); do
-            WID=$(xdotool search --name "Secount" 2>/dev/null | head -n 1 || true)
+            WID=$(xdotool search --onlyvisible --name "Secount" 2>/dev/null | head -n 1 || true)
             if [ -n "$WID" ]; then break; fi
             if ! kill -0 "$APP_PID" 2>/dev/null; then
               cat /tmp/secount.log || true
@@ -66,8 +66,15 @@ jobs:
 
           test -n "$WID"
           sleep 5
-          import -window "$WID" assets/runtime-screenshot.png
-          test -s assets/runtime-screenshot.png
+          # `import` fails with "Resource temporarily unavailable" when the
+          # window is not yet painted — retry instead of failing the run.
+          ok=""
+          for i in 1 2 3 4 5; do
+            if import -window "$WID" assets/runtime-screenshot.png 2>/tmp/import-err.log && test -s assets/runtime-screenshot.png; then ok=1; break; fi
+            cat /tmp/import-err.log || true
+            sleep 3
+          done
+          test -n "$ok"
       - name: Upload runtime preview artifact
         uses: actions/upload-artifact@v4
         with:
