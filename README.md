@@ -10,9 +10,7 @@ Secount is built with **Kotlin + Compose Multiplatform** for Windows and Android
 
 This image is captured from the **running Secount desktop application**, not a mockup.
 
-<p align="center">
-  <img src="./assets/runtime-screenshot.png" alt="Secount running desktop home screen" width="720">
-</p>
+![Secount running desktop home screen](./assets/runtime-screenshot.png)
 
 GitHub Actions refreshes the runtime preview when the application source changes.
 
@@ -189,7 +187,7 @@ See [`SECURITY.md`](./SECURITY.md) for the reporting policy and [`docs/ARCHITECT
 
 ## 👨‍💻 Creator
 
-**Md. Ragib Ashhab**
+### Md. Ragib Ashhab
 
 Secount is a **personal software product project** — built, maintained, and evolved independently as part of a broader portfolio of software, AI, graphics, and engineering work.
 
