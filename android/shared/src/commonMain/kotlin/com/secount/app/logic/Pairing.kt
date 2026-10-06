@@ -146,7 +146,7 @@ object PairCrypto {
     }
 }
 
-/** Password-protected backup: ENC1 envelope with key from password. */
+/** Password-protected backup: ENC2 envelope with key from password. */
 object BackupCrypto {
     fun encrypt(password: String, plain: String): String {
         val key = sha256(("secount-backup|" + password).encodeToByteArray())
@@ -156,7 +156,7 @@ object BackupCrypto {
     fun decrypt(password: String, cipher: String): String? {
         return try {
             val t = cipher.trim()
-            if (!t.startsWith("ENC1.")) return null
+            if (!t.startsWith("ENC2.") && !t.startsWith("ENC1.")) return null
             val key = sha256(("secount-backup|" + password).encodeToByteArray())
             PairCrypto.decryptHex(key, t)
         } catch (e: Exception) {
@@ -489,7 +489,7 @@ class SyncEngine(private val store: EventStore, private val pair: PairStore) {
 
     private fun maybeDecrypt(dataRaw: String): String {
         return try {
-            if (!dataRaw.startsWith("ENC1.")) return dataRaw
+            if (!dataRaw.startsWith("ENC2.") && !dataRaw.startsWith("ENC1.")) return dataRaw
             val k = pairKey() ?: return dataRaw
             PairCrypto.decryptHex(k, dataRaw) ?: return ""
         } catch (e: Exception) {
@@ -864,7 +864,7 @@ class SyncEngine(private val store: EventStore, private val pair: PairStore) {
         val from = env["from"] ?: ""
         if (from.isEmpty() || from == pair.accountId) return
         var dataRaw = extractRaw(raw, "data") ?: "{}"
-        if (dataRaw.startsWith("ENC1.")) {
+        if (dataRaw.startsWith("ENC2.") || dataRaw.startsWith("ENC1.")) {
             dataRaw = maybeDecrypt(dataRaw)
             if (dataRaw.isEmpty()) return
         }
