@@ -185,6 +185,9 @@ See [`SECURITY.md`](./SECURITY.md) for the reporting policy and [`docs/ARCHITECT
 - [`SECURITY.md`](./SECURITY.md) — security reporting policy
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md) — development expectations
 - [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — architecture and refactoring boundaries
+- [`docs/INSTALL.md`](./docs/INSTALL.md) — install, upgrade, and troubleshooting
+- [`docs/BACKUP.md`](./docs/BACKUP.md) — backup, restore, import, export
+- [`docs/FAQ.md`](./docs/FAQ.md) — pairing, PIN, sync, and data questions
 - [`docs/RELEASE.md`](./docs/RELEASE.md) — release process and artifact policy
 - [`docs/THREAT-MODEL.md`](./docs/THREAT-MODEL.md) — security boundaries and invariants
 - [`docs/SYNC.md`](./docs/SYNC.md) — pairing, sync and failure model

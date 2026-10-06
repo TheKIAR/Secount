@@ -5,12 +5,17 @@
 - Kept ENC1 decryption compatibility for existing local data.
 - Added tamper and wrong-key regression tests.
 - Documented pairing-code security limitations.
+- Pairing requests and pending codes expire after 7 days; incoming list capped.
+- Added PIN lockout regression coverage.
 
 ### Engineering
 - Added countdown/date edge-case regression coverage.
 - Added a dedicated QA matrix for Android, Windows, synchronization, notifications and release sign-off.
 - Made CI/release Windows artifact discovery version-independent.
 - Updated Android SDK setup action to v4.
+- Split UI into UiKit/Cards/Dialogs/UpdateCheck and logic into Crypto/EventJson.
+- Fixed CI: CodeQL build step, screenshot retry, unsigned-APK handling.
+- Added install, backup, and FAQ guides.
 
 # Changelog
 
