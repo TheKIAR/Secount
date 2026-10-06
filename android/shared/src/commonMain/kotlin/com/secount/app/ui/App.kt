@@ -117,20 +117,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okio.Path.Companion.toPath
 
-private const val NEED_LOCK_KEY = "secount_need_lock"
-private const val MUTED_KEY = "secount_muted"
-private const val LANG_KEY = "secount_lang"
-
-private val LANGS = listOf("System", "en", "de", "fr", "es")
-
-private fun langDisplay(code: String): String = when (code) {
-    "en" -> "English"
-    "de" -> "Deutsch"
-    "fr" -> "Français"
-    "es" -> "Español"
-    else -> "System"
-}
-
 /** Pairing payload for QR / copy-paste. */
 internal fun pairingText(myCode: String, accountId: String): String = "SECOUNT1:$myCode:$accountId"
 
@@ -161,35 +147,8 @@ private object SecountWidgetPush {
 
 
 
-private val FILTERS = listOf("All", "Today", "Next 7 days", "Featured", "With secret", "Past", "To partner")
-private val SORTS = listOf("Happening next", "Name A–Z", "Biggest countdown", "Newest first")
 internal val REPEATS = listOf("One-time", "Yearly", "Monthly", "Weekly")
 internal val SOUNDS = listOf("Chime", "Soft", "Silent")
-private val TEXT_SIZES = listOf("Standard", "Large", "Extra large")
-private const val TEXT_SIZE_KEY = "secount_textsize"
-
-private fun textScale(pref: String): Float = when (pref) {
-    "Large" -> 1.15f
-    "Extra large" -> 1.3f
-    else -> 1f
-}
-
-private fun greetingFor(hour: Int): String = when (hour) {
-    in 5..11 -> "Good morning"
-    in 12..17 -> "Good afternoon"
-    in 18..22 -> "Good evening"
-    else -> "Good night"
-}
-
-private fun filterEmoji(id: String): String = when (id) {
-    "Today" -> "● "
-    "Next 7 days" -> "◐ "
-    "Featured" -> "★ "
-    "With secret" -> "🎁 "
-    "Past" -> "✓ "
-    "To partner" -> "✉ "
-    else -> ""
-}
 internal val ACCENTS = listOf(
     "Auto" to "",
     "Pink" to "#FF5D97",
@@ -1192,96 +1151,8 @@ fun App() {
                 }
             )
         }
-        if (showExport) {
-            val json = remember(showExport, storeVer) { store.exportJson() }
-            var encPass by remember { mutableStateOf("") }
-            val outText = remember(json, encPass) {
-                if (encPass.isNotEmpty()) {
-                    try { BackupCrypto.encrypt(encPass, json) } catch (e: Exception) { json }
-                } else json
-            }
-            AlertDialog(
-                onDismissRequest = { showExport = false },
-                title = { Text(Lang.t("exportBackup")) },
-                text = {
-                    Column(Modifier.verticalScroll(rememberScrollState())) {
-                        OutlinedTextField(
-                            encPass, { encPass = it },
-                            label = { Text("Password (optional — encrypts backup)") },
-                            singleLine = true
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            if (encPass.isNotEmpty()) "🔒 Encrypted — only readable with this password."
-                            else "No password — plain JSON (secrets readable).",
-                            fontSize = 12.sp
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        Text(outText, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        try {
-                            copyToClipboard(outText)
-                        } catch (ignored: Exception) {
-                        }
-                        showExport = false
-                    }) { Text(Lang.t("copy")) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showExport = false }) { Text(Lang.t("close")) }
-                }
-            )
-        }
-        if (showImport) {
-            var pasted by remember { mutableStateOf("") }
-            var decPass by remember { mutableStateOf("") }
-            var imported by remember { mutableStateOf<Int?>(null) }
-            var importErr by remember { mutableStateOf<String?>(null) }
-            AlertDialog(
-                onDismissRequest = { showImport = false; refresh() },
-                title = { Text("Import backup") },
-                text = {
-                    Column(Modifier.verticalScroll(rememberScrollState())) {
-                        Text("Paste a backup JSON array (or 🔒 encrypted backup + password).", fontSize = 12.sp)
-                        Spacer(Modifier.height(6.dp))
-                        OutlinedTextField(pasted, { pasted = it; imported = null; importErr = null }, label = { Text("Backup JSON / encrypted") })
-                        Spacer(Modifier.height(6.dp))
-                        OutlinedTextField(decPass, { decPass = it }, label = { Text("Password (if encrypted)") }, singleLine = true)
-                        if (imported != null) Text("Imported $imported countdown(s).", fontSize = 12.sp)
-                        if (importErr != null) Text(importErr!!, fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        try {
-                            var txt = pasted.trim()
-                            if (txt.startsWith("ENC1.")) {
-                                if (decPass.isEmpty()) {
-                                    importErr = "Encrypted backup needs its password."
-                                    return@TextButton
-                                }
-                                val dec = BackupCrypto.decrypt(decPass, txt)
-                                if (dec == null) {
-                                    importErr = "Wrong password or corrupt backup."
-                                    return@TextButton
-                                }
-                                txt = dec
-                            }
-                            imported = store.importJson(txt)
-                            importErr = null
-                        } catch (e: Exception) {
-                            importErr = "Import failed."
-                        }
-                        refresh()
-                    }) { Text(Lang.t("importBackup")) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showImport = false; refresh() }) { Text(Lang.t("close")) }
-                }
-            )
-        }
+        if (showExport) ExportDialog(store, storeVer, onClose = { showExport = false })
+        if (showImport) ImportDialog(store, onRefresh = { refresh() }, onClose = { showImport = false; refresh() })
         secretOf?.let { item ->
             val live = store.byId(item.id) ?: item
             val initialThread = (store.byId(item.id)?.threadEntries() ?: item.threadEntries())
