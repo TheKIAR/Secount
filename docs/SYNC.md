@@ -9,6 +9,7 @@ Secount uses a peer-oriented pairing flow for supported countdown sharing, repli
 4. Sync exchanges supported state through the relay/transport path.
 5. Payloads are authenticated before trusted state is applied.
 6. Temporary/offline failures are retried by the application.
+7. Unanswered pairing requests (incoming list, outgoing pending code) expire after 7 days; the incoming list is capped at the 20 newest.
 
 ## Failure model
 The sync layer must assume:

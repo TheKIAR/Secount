@@ -209,7 +209,18 @@ class PairStore(ns: String = "") {
     fun partnerCode(): String = prefsGet(k("partner_code")) ?: ""
     fun pairedAt(): Long = prefsGet(k("paired_at"))?.toLongOrNull() ?: 0L
 
-    fun pendingCode(): String = prefsGet(k("pending_code")) ?: ""
+    fun pendingCode(): String {
+        val c = prefsGet(k("pending_code")) ?: ""
+        if (c.isEmpty()) return ""
+        // Outgoing requests expire: a week-old unanswered code is stale
+        // (user can simply re-enter it). Missing timestamp = legacy, keep.
+        val at = pendingAt()
+        if (at > 0 && nowSec() - at > PENDING_TTL_SEC) {
+            setPending("")
+            return ""
+        }
+        return c
+    }
     fun setPending(code: String) {
         prefsPut(k("pending_code"), code)
         if (code.isEmpty()) {
@@ -280,6 +291,15 @@ class PairStore(ns: String = "") {
     }
 
     fun incoming(): List<IncomingReq> {
+        val all = readIncoming()
+        if (all.isEmpty()) return all
+        val now = nowSec()
+        val fresh = all.filter { it.at <= 0 || now - it.at <= INCOMING_TTL_SEC }
+        if (fresh.size < all.size) saveIncoming(fresh)
+        return fresh
+    }
+
+    private fun readIncoming(): List<IncomingReq> {
         val raw = prefsGet(k("incoming_reqs")) ?: return emptyList()
         val out = mutableListOf<IncomingReq>()
         try {
@@ -340,8 +360,12 @@ class PairStore(ns: String = "") {
     }
 
     private fun saveIncoming(list: List<IncomingReq>) {
+        // Bound the list: drop week-old requests, keep the 20 newest.
+        val now = nowSec()
+        val kept = list.filter { it.at <= 0 || now - it.at <= INCOMING_TTL_SEC }
+            .sortedByDescending { it.at }.take(MAX_INCOMING)
         val sb = StringBuilder("[")
-        for ((i, r) in list.withIndex()) {
+        for ((i, r) in kept.withIndex()) {
             if (i > 0) sb.append(",")
             sb.append("{\"code\":").append(q(r.code))
                 .append(",\"id\":").append(q(r.accountId))
@@ -353,6 +377,10 @@ class PairStore(ns: String = "") {
 
     companion object {
         private const val ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+        /** Pairing requests (incoming + outgoing pending) expire after 7 days. */
+        private const val INCOMING_TTL_SEC = 7L * 24 * 3600
+        private const val PENDING_TTL_SEC = 7L * 24 * 3600
+        private const val MAX_INCOMING = 20
 
         fun newCode(): String {
             val sb = StringBuilder()

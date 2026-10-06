@@ -77,4 +77,43 @@ class SecurityAndEdgeCaseTest {
         item.secretEnabled = true
         assertFalse(item.hasSecret())
     }
+
+    @Test fun pinLockoutBlocksBruteForceThenRecovers() {
+        val pin = PinLock()
+        try {
+            assertFalse(pin.setPin("12"))
+            assertFalse(pin.setPin("abcd"))
+            assertTrue(pin.setPin("4321"))
+            assertTrue(pin.unlock("4321"))
+            pin.lock()
+            repeat(5) { assertFalse(pin.unlock("0000")) }
+            assertEquals(5, pin.fails())
+            assertEquals(0, pin.attemptsLeft())
+            assertFalse(pin.canAttempt())
+            // Even the right PIN is refused while locked out.
+            assertFalse(pin.unlock("4321"))
+        } finally {
+            pin.removePin()
+        }
+        assertFalse(pin.hasPin())
+    }
+
+    @Test fun stalePairingRequestsExpire() {
+        val pair = PairStore("exp" + System.nanoTime())
+        pair.setPending("BBBBBB")
+        assertEquals("BBBBBB", pair.pendingCode())
+        prefsPut(pair.k("pending_at"), (nowSec() - 8L * 86400).toString())
+        assertEquals("", pair.pendingCode())
+
+        prefsPut(pair.k("incoming_reqs"), """[{"code":"AAAAAA","id":"x","at":1}]""")
+        assertTrue(pair.incoming().isEmpty())
+    }
+
+    @Test fun freshPairingRequestsSurvive() {
+        val pair = PairStore("fresh" + System.nanoTime())
+        pair.setPending("CCCCCC")
+        assertEquals("CCCCCC", pair.pendingCode())
+        pair.addIncoming("DDDDDD", "some-account")
+        assertTrue(pair.incoming().any { it.code == "DDDDDD" })
+    }
 }
