@@ -51,6 +51,7 @@ import com.secount.app.logic.SyncEngine
 import com.secount.app.logic.biometricAuthenticate
 import com.secount.app.logic.biometricAvailable
 import com.secount.app.logic.copyToClipboard
+import com.secount.app.logic.copyFromJson
 import com.secount.app.logic.deletePhotoFile
 import com.secount.app.logic.getClipboardText
 import com.secount.app.logic.loadPhotoBitmap

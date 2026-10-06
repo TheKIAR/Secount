@@ -323,39 +323,6 @@ class EventItem {
         updatedAtSec = atSec
     }
 
-    fun toJson(): String {
-        return "{\"id\":" + q(id) +
-            ",\"title\":" + q(title) +
-            ",\"date\":" + q(date.toString()) +
-            ",\"hour\":" + hour.coerceIn(0, 23) +
-            ",\"minute\":" + minute.coerceIn(0, 59) +
-            ",\"message\":" + q(message) +
-            ",\"secretMessage\":" + q(secretMessage) +
-            ",\"secretEnabled\":" + secretEnabled +
-            ",\"featured\":" + featured +
-            ",\"repeatYearly\":" + repeatYearly +
-            ",\"repeatMode\":" + q(effectiveRepeat()) +
-            ",\"soundEnabled\":" + soundEnabled +
-            ",\"soundName\":" + q(soundName) +
-            ",\"remind1d\":" + remind1d +
-            ",\"remind7d\":" + remind7d +
-            ",\"icon\":" + q(icon) +
-            ",\"accentHex\":" + q(accentHex) +
-            ",\"category\":" + q(category) +
-            ",\"senderId\":" + q(senderId) +
-            ",\"forPartner\":" + forPartner +
-            ",\"delivered\":" + delivered +
-            ",\"deliveredAtSec\":" + deliveredAtSec +
-            ",\"seenAtSec\":" + seenAtSec +
-            ",\"updatedAtSec\":" + updatedAtSec +
-            ",\"replyMessage\":" + q(replyMessage) +
-            ",\"replyThread\":" + q(replyThread) +
-            ",\"photoUri\":" + q(photoUri) +
-            ",\"createdAt\":" + q(createdAt.toString()) + "}"
-    }
-
-    fun copyFromJson(): EventItem = fromJson(toJson())
-
     companion object {
         val CATEGORY_PRESETS = listOf(
             "Countdown", "Birthday", "Anniversary", "Wedding", "Holiday",
@@ -386,70 +353,6 @@ class EventItem {
             return null
         }
 
-        fun fromJson(obj: String): EventItem {
-            val e = EventItem()
-            for (part in JsonUtil.splitTopLevel(obj.trim())) {
-                val colon = part.indexOf(':')
-                if (colon < 0) continue
-                val key = JsonUtil.unquote(part.substring(0, colon).trim())
-                val `val` = part.substring(colon + 1).trim()
-                try {
-                    when (key) {
-                        "id" -> e.id = JsonUtil.unquote(`val`)
-                        "title" -> e.title = JsonUtil.unquote(`val`)
-                        "date" -> e.date = LocalDate.parse(JsonUtil.unquote(`val`))
-                        "hour" -> e.hour = JsonUtil.unquote(`val`).toIntOrNull() ?: (`val`.toIntOrNull() ?: 9)
-                        "minute" -> e.minute = JsonUtil.unquote(`val`).toIntOrNull() ?: (`val`.toIntOrNull() ?: 0)
-                        "message" -> e.message = JsonUtil.unquote(`val`)
-                        "secretMessage" -> e.secretMessage = JsonUtil.unquote(`val`)
-                        "secretEnabled" -> e.secretEnabled = `val`.toBoolean()
-                        "featured" -> e.featured = `val`.toBoolean()
-                        "repeatYearly" -> e.repeatYearly = `val`.toBoolean()
-                        "repeatMode" -> e.repeatMode = JsonUtil.unquote(`val`)
-                        "repeat" -> e.repeatMode = JsonUtil.unquote(`val`)
-                        "soundEnabled" -> e.soundEnabled = `val`.toBoolean()
-                        "soundName" -> e.soundName = JsonUtil.unquote(`val`)
-                        "remind1d" -> e.remind1d = `val`.toBoolean()
-                        "remind7d" -> e.remind7d = `val`.toBoolean()
-                        "icon" -> e.icon = JsonUtil.unquote(`val`)
-                        "accentHex" -> e.accentHex = JsonUtil.unquote(`val`)
-                        "color" -> e.accentHex = JsonUtil.unquote(`val`)
-                        "category" -> e.category = JsonUtil.unquote(`val`)
-                        "kind" -> e.category = JsonUtil.unquote(`val`)
-                        "senderId" -> e.senderId = JsonUtil.unquote(`val`)
-                        "forPartner" -> e.forPartner = `val`.toBoolean()
-                        "delivered" -> e.delivered = `val`.toBoolean()
-                        "deliveredAtSec" -> e.deliveredAtSec = JsonUtil.unquote(`val`).toLongOrNull() ?: (`val`.toLongOrNull() ?: 0L)
-                        "seenAtSec" -> e.seenAtSec = JsonUtil.unquote(`val`).toLongOrNull() ?: (`val`.toLongOrNull() ?: 0L)
-                        "updatedAtSec" -> e.updatedAtSec = JsonUtil.unquote(`val`).toLongOrNull() ?: (`val`.toLongOrNull() ?: 0L)
-                        "replyMessage" -> e.replyMessage = JsonUtil.unquote(`val`)
-                        "reply" -> e.replyMessage = JsonUtil.unquote(`val`)
-                        "replyThread" -> e.replyThread = JsonUtil.unquote(`val`)
-                        "photoUri" -> e.photoUri = JsonUtil.unquote(`val`)
-                        "photo" -> e.photoUri = JsonUtil.unquote(`val`)
-                        "createdAt" -> e.createdAt = LocalDateTime.parse(JsonUtil.unquote(`val`))
-                        else -> {}
-                    }
-                } catch (ignored: Exception) {
-                }
-            }
-            if (e.icon.isEmpty()) e.icon = "📅"
-            if (e.category.isEmpty()) e.category = "Countdown"
-            if (e.repeatMode.isEmpty()) e.repeatMode = if (e.repeatYearly) "yearly" else "once"
-            e.repeatYearly = e.repeatMode != "once"
-            e.hour = e.hour.coerceIn(0, 23)
-            e.minute = e.minute.coerceIn(0, 59)
-            if (e.soundName.isEmpty()) e.soundName = "Chime"
-            if (e.replyThread.isEmpty() && e.replyMessage.isNotEmpty()) {
-                e.replyThread = "0|partner|" + e.replyMessage.replace("\n", " ")
-            }
-            return e
-        }
-
         private fun pad2(v: Long): String = if (v < 10) "0$v" else "$v"
-
-        private fun q(s: String?): String {
-            return "\"" + JsonUtil.escape(s ?: "") + "\""
-        }
     }
 }

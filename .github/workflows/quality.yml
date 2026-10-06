@@ -50,7 +50,7 @@ jobs:
         run: |
           $appGradle = Get-Content android/androidApp/build.gradle -Raw
           $desktopGradle = Get-Content android/desktopApp/build.gradle -Raw
-          $appKotlin = Get-Content android/shared/src/commonMain/kotlin/com/secount/app/ui/App.kt -Raw
+          $appKotlin = Get-Content android/shared/src/commonMain/kotlin/com/secount/app/ui/UpdateCheck.kt -Raw
           $appVersion = [regex]::Match($appGradle, 'versionName\s*=\s*"([^"]+)"').Groups[1].Value
           $desktopVersion = [regex]::Match($desktopGradle, 'packageVersion\s*=\s*"([^"]+)"').Groups[1].Value
           $runtimeVersion = [regex]::Match($appKotlin, 'APP_VERSION\s*=\s*"([^"]+)"').Groups[1].Value
