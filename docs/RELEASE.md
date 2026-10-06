@@ -17,6 +17,10 @@ Secount releases are built from Git tags. The repository source remains the sour
 
 Release artifacts should be named with the version and platform. Debug APKs are for development and should not be presented as production downloads.
 
+## Android signing
+
+CI builds without a keystore produce `androidApp-release-unsigned.apk`; CI labels it `-android-unsigned.apk` so it is never mistaken for a production download. A version-tag production release **requires** a signed `androidApp-release.apk` and the release workflow refuses to publish without one. To enable signed releases, generate a release keystore once on a trusted machine, store it plus its passwords as GitHub Actions secrets, and wire them into `release.yml` — never commit the keystore or its passwords to the repository.
+
 ## Rollback
 
 If a release is defective, publish a corrected patch release rather than rewriting an existing tag. Keep the previous known-good release available until the replacement is verified.

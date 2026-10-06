@@ -70,7 +70,11 @@ jobs:
           $exe = Get-ChildItem "android/desktopApp/build/compose/binaries/main/exe/*.exe" | Select-Object -First 1
           if (-not $exe) { throw "Windows EXE was not produced" }
           Copy-Item $exe.FullName "dist/Secount-${{ github.sha }}-windows.exe"
-          Copy-Item "android/androidApp/build/outputs/apk/release/androidApp-release.apk" "dist/Secount-${{ github.sha }}-android.apk"
+          $apk = Get-ChildItem "android/androidApp/build/outputs/apk/release/androidApp-release*.apk" | Select-Object -First 1
+          if (-not $apk) { throw "Android release APK was not produced" }
+          # No keystore in CI: label unsigned output honestly so it is never mistaken for a signed production APK.
+          $apkSuffix = if ($apk.Name -like "*unsigned*") { "-android-unsigned.apk" } else { "-android.apk" }
+          Copy-Item $apk.FullName ("dist/Secount-${{ github.sha }}" + $apkSuffix)
           Get-ChildItem dist | ForEach-Object { if ($_.Length -lt 1024) { throw "Artifact looks invalid: $($_.Name)" } }
           Get-FileHash dist/* -Algorithm SHA256 | Format-Table
           Get-FileHash dist/* -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  $($_.Path | Split-Path -Leaf)" } | Set-Content dist/SHA256SUMS.txt
