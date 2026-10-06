@@ -2,5 +2,5 @@
 <resources>
     <color name="brand">#FF5D97</color>
     <color name="secount_bg">#17102B</color>
-    <color name="secount_mark_light">#FFF3F7</color>
+    <color name="secount_mark_light">#FFF3F7</color>\n    <color name="secount_icon_background">#17102B</color>
 </resources>
