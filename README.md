@@ -192,6 +192,7 @@ See [`SECURITY.md`](./SECURITY.md) for the reporting policy and [`docs/ARCHITECT
 - [`docs/SYNC.md`](./docs/SYNC.md) — pairing, sync and failure model
 - [`docs/TEST-MATRIX.md`](./docs/TEST-MATRIX.md) — automated and manual QA coverage
 - [`docs/PRODUCTION-READINESS.md`](./docs/PRODUCTION-READINESS.md) — production release gate
+- [`docs/BRAND.md`](./docs/BRAND.md) — visual identity and logo assets
 
 ## 👨‍💻 Creator
 
