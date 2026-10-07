@@ -442,194 +442,71 @@ fun App() {
             drawerState = drawerState,
             drawerContent = {
                 ModalDrawerSheet {
-                    Column(
-                        Modifier.verticalScroll(rememberScrollState())
-                    ) {
-                        // Modern profile header with theme gradient.
-                        Box(
-                            Modifier.fillMaxWidth()
-                                .background(heroGradient())
-                                .padding(horizontal = 20.dp, vertical = 22.dp)
-                        ) {
-                            Column {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    BrandMark(Modifier.size(32.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Secount", fontWeight = FontWeight.Bold, fontSize = scaled(24.sp, fontScale), color = Color.White)
-                                }
-                                Spacer(Modifier.height(2.dp))
-                                Text(
-                                    themeByName(themeName).tagline,
-                                    fontSize = scaled(12.sp, fontScale), color = Color.White.copy(alpha = 0.9f)
-                                )
-                                Spacer(Modifier.height(10.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(20.dp),
-                                    color = Color.White.copy(alpha = 0.2f)
-                                ) {
-                                    Text(
-                                        if (pair.isPaired()) "✉ Connected • ${pair.partnerCode()}"
-                                        else if (syncing) "○ Syncing…"
-                                        else "○ Not connected — tap Connect",
-                                        fontSize = scaled(12.sp, fontScale),
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color.White,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
-                                    )
-                                }
+                    AppDrawerContent(
+                        pair = pair,
+                        syncing = syncing,
+                        themeName = themeName,
+                        darkMode = darkMode,
+                        muted = muted,
+                        textSizePref = textSizePref,
+                        langPref = langPref,
+                        fontScale = fontScale,
+                        onNewCountdown = {
+                            val item = EventItem()
+                            item.date = LocalDate.now().plusDays(7)
+                            item.senderId = myId
+                            item.forPartner = pair.isPaired()
+                            editing = item
+                            editIsNew = true
+                            closeDrawer()
+                        },
+                        onSync = { doSync(); closeDrawer() },
+                        onConnect = { showConnect = true; closeDrawer() },
+                        onPin = { showPin = true; closeDrawer() },
+                        onMute = {
+                            muted = !muted
+                            try {
+                                prefsPut(MUTED_KEY, if (muted) "1" else "")
+                            } catch (ignored: Exception) {
                             }
-                        }
-                        Column(Modifier.padding(horizontal = 12.dp, vertical = 12.dp)) {
-                        DrawerSection(Lang.t("secCountdowns"))
-                        NavigationDrawerItem(
-                            label = { Text(Lang.t("newCountdown"), fontSize = scaled(14.sp, fontScale)) },
-                            selected = false,
-                            icon = { Text("＋", fontWeight = FontWeight.Bold) },
-                            onClick = {
-                                val item = EventItem()
-                                item.date = LocalDate.now().plusDays(7)
-                                item.senderId = myId
-                                item.forPartner = pair.isPaired()
-                                editing = item
-                                editIsNew = true
-                                closeDrawer()
-                            }
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        HorizontalDivider()
-                        Spacer(Modifier.height(4.dp))
-                        DrawerSection(Lang.t("secConnection"))
-                        NavigationDrawerItem(
-                            label = { Text(if (syncing) Lang.t("syncing") else Lang.t("syncNow"), fontSize = scaled(14.sp, fontScale)) },
-                            selected = false,
-                            icon = { Text("⟳") },
-                            onClick = { doSync(); closeDrawer() }
-                        )
-                        NavigationDrawerItem(
-                            label = { Text(if (pair.isPaired()) "✉ ${pair.partnerCode()}" else Lang.t("connectPartner"), fontSize = scaled(14.sp, fontScale)) },
-                            selected = false,
-                            icon = { Text("✉") },
-                            onClick = { showConnect = true; closeDrawer() }
-                        )
-                        NavigationDrawerItem(
-                            label = { Text(Lang.t("appPin"), fontSize = scaled(14.sp, fontScale)) },
-                            selected = false,
-                            icon = { Text("🔒") },
-                            onClick = { showPin = true; closeDrawer() }
-                        )
-                        NavigationDrawerItem(
-                            label = { Text(if (muted) Lang.t("unmute") else Lang.t("mute"), fontSize = scaled(14.sp, fontScale)) },
-                            selected = false,
-                            icon = { Text(if (muted) "🔇" else "🔔") },
-                            onClick = {
-                                muted = !muted
+                            if (muted) {
                                 try {
-                                    prefsPut(MUTED_KEY, if (muted) "1" else "")
+                                    alarmStop()
                                 } catch (ignored: Exception) {
                                 }
-                                if (muted) {
-                                    try {
-                                        alarmStop()
-                                    } catch (ignored: Exception) {
-                                    }
-                                }
                             }
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        HorizontalDivider()
-                        Spacer(Modifier.height(4.dp))
-                        DrawerSection(Lang.t("secBackup"))
-                        NavigationDrawerItem(
-                            label = { Text(Lang.t("exportBackup"), fontSize = scaled(14.sp, fontScale)) },
-                            selected = false,
-                            icon = { Text("⤴") },
-                            onClick = { showExport = true; closeDrawer() }
-                        )
-                        NavigationDrawerItem(
-                            label = { Text(Lang.t("importBackup"), fontSize = scaled(14.sp, fontScale)) },
-                            selected = false,
-                            icon = { Text("⤵") },
-                            onClick = { showImport = true; closeDrawer() }
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        HorizontalDivider()
-                        Spacer(Modifier.height(4.dp))
-                        DrawerSection("READABILITY")
-                        for (s in TEXT_SIZES) {
-                            NavigationDrawerItem(
-                                label = { Text((if (s == textSizePref) "● " else "○ ") + s, fontSize = scaled(14.sp, fontScale)) },
-                                selected = s == textSizePref,
-                                icon = { Text(if (s == TEXT_SIZES[0]) "A" else if (s == TEXT_SIZES[1]) "A＋" else "A＋＋") },
-                                onClick = {
-                                    textSizePref = s
-                                    try {
-                                        prefsPut(TEXT_SIZE_KEY, s)
-                                    } catch (ignored: Exception) {
-                                    }
-                                }
-                            )
+                        },
+                        onExport = { showExport = true; closeDrawer() },
+                        onImport = { showImport = true; closeDrawer() },
+                        onTextSize = {
+                            textSizePref = it
+                            try {
+                                prefsPut(TEXT_SIZE_KEY, it)
+                            } catch (ignored: Exception) {
+                            }
+                        },
+                        onLanguage = {
+                            langPref = it
+                            try {
+                                prefsPut(LANG_KEY, it)
+                            } catch (ignored: Exception) {
+                            }
+                        },
+                        onAppearance = {
+                            darkMode = it
+                            try {
+                                prefsPut("secount_darkmode", it)
+                            } catch (ignored: Exception) {
+                            }
+                        },
+                        onTheme = {
+                            themeName = it
+                            try {
+                                prefsPut("secount_theme", it)
+                            } catch (ignored: Exception) {
+                            }
                         }
-                        Spacer(Modifier.height(4.dp))
-                        HorizontalDivider()
-                        Spacer(Modifier.height(4.dp))
-                        DrawerSection(Lang.t("secLanguage"))
-                        for (l in LANGS) {
-                            NavigationDrawerItem(
-                                label = { Text((if (l == langPref) "● " else "○ ") + langDisplay(l), fontSize = scaled(14.sp, fontScale)) },
-                                selected = l == langPref,
-                                onClick = {
-                                    langPref = l
-                                    try {
-                                        prefsPut(LANG_KEY, l)
-                                    } catch (ignored: Exception) {
-                                    }
-                                }
-                            )
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        HorizontalDivider()
-                        Spacer(Modifier.height(4.dp))
-                        DrawerSection(Lang.t("secAppearance"))
-                        for (m in listOf("System", "Light", "Dark")) {
-                            NavigationDrawerItem(
-                                label = { Text((if (m == darkMode) "● " else "○ ") + m, fontSize = scaled(14.sp, fontScale)) },
-                                selected = m == darkMode,
-                                icon = { Text(if (m == "Light") "☀" else if (m == "Dark") "☾" else "◐") },
-                                onClick = {
-                                    darkMode = m
-                                    try {
-                                        prefsPut("secount_darkmode", m)
-                                    } catch (ignored: Exception) {
-                                    }
-                                }
-                            )
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        HorizontalDivider()
-                        Spacer(Modifier.height(4.dp))
-                        DrawerSection(Lang.t("secTheme"))
-                        for (t in THEMES) {
-                            NavigationDrawerItem(
-                                label = {
-                                    Column {
-                                        Text((if (t.name == themeName) "● " else "○ ") + t.name, fontSize = scaled(14.sp, fontScale))
-                                        Text(t.tagline, fontSize = scaled(11.sp, fontScale), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                },
-                                selected = t.name == themeName,
-                                icon = { ThemeDot(t.name) },
-                                onClick = {
-                                    themeName = t.name
-                                    try {
-                                        prefsPut("secount_theme", t.name)
-                                    } catch (ignored: Exception) {
-                                    }
-                                }
-                            )
-                        }
-                        Spacer(Modifier.height(12.dp))
-                        }
-                    }
+                    )
                 }
             }
         ) {
@@ -679,140 +556,62 @@ fun App() {
                     onFilter = { filter = it },
                     onSort = { sort = it }
                 )
-                if (viewMode == "Calendar") {
-                    CalendarView(
-                        month = calMonth,
-                        today = today,
-                        store = store,
-                        myId = myId,
-                        selected = calDay,
-                        fontScale = fontScale,
-                        onMonth = { calMonth = it },
-                        onDay = { calDay = it; refresh() }
-                    )
-                }
-                undoItem?.let { u ->
-                    Surface(
-                        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer
-                    ) {
-                    Row(
-                        Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("${Lang.t("deleted")} '${u.title}'", fontSize = scaled(13.sp, fontScale), modifier = Modifier.weight(1f))
-                        TextButton(onClick = {
-                            store.addOrUpdate(u)
-                            undoItem = null
-                            refresh()
-                        }) { Text(Lang.t("undo")) }
-                        TextButton(onClick = { undoItem = null }) { Text(Lang.t("dismiss")) }
-                    }
-                    }
-                }
-                if (shown.isEmpty()) {
-                    Column(
-                        Modifier.weight(1f).fillMaxWidth().padding(24.dp).verticalScroll(rememberScrollState()),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        if (mainTab == "Inbox") {
-                            Surface(shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-                                Text("💌", fontSize = scaled(52.sp, fontScale), modifier = Modifier.padding(20.dp))
-                            }
-                            Spacer(Modifier.height(12.dp))
-                            Text(
-                                "All quiet — for now",
-                                fontSize = scaled(20.sp, fontScale), fontWeight = FontWeight.Bold
-                            )
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                "Partner surprises appear here on D-day, then vanish after the day ends. Yearly surprises return each year.",
-                                fontSize = scaled(14.sp, fontScale),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        } else {
-                            Surface(shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-                                Text("♥", fontSize = scaled(52.sp, fontScale), color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(20.dp))
-                            }
-                            Spacer(Modifier.height(12.dp))
-                            Text(
-                                "Start your first countdown",
-                                fontSize = scaled(20.sp, fontScale), fontWeight = FontWeight.Bold
-                            )
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                if (query.isNotBlank() || filter != "All") Lang.t("emptyNomatch")
-                                else "Three easy steps: 1) Name it  2) Pick a date  3) Add a secret or photo if you like.",
-                                fontSize = scaled(14.sp, fontScale),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.height(14.dp))
-                            Button(
-                                onClick = {
-                                    val item = EventItem()
-                                    item.date = LocalDate.now().plusDays(7)
-                                    item.senderId = myId
-                                    item.forPartner = pair.isPaired()
-                                    editing = item
-                                    editIsNew = true
-                                },
-                                modifier = Modifier.heightIn(min = 52.dp),
-                                shape = RoundedCornerShape(18.dp)
-                            ) { Text(Lang.t("newBtn"), fontSize = scaled(15.sp, fontScale)) }
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                "Tip: use the search and chips above to find anything fast.",
-                                fontSize = scaled(12.sp, fontScale),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 4.dp),
-                        contentPadding = PaddingValues(bottom = 96.dp)
-                    ) {
-                        items(shown, key = { it.id }) { e ->
-                            if (e.isForMe(myId)) {
-                                SecretInboxCard(
-                                    e,
-                                    fontScale = fontScale,
-                                    onOpen = { secretOf = e }
-                                )
-                            } else {
-                                EventCard(
-                                    e, now, myId,
-                                    fontScale = fontScale,
-                                    onEdit = { editing = e.copyFromJson(); editIsNew = false },
-                                    onDuplicate = {
-                                        val copy = e.copyFromJson()
-                                        copy.id = UUID.randomUUID().toString().replace("-", "")
-                                        copy.title = e.title + " (copy)"
-                                        copy.createdAt = LocalDateTime.now()
-                                        copy.senderId = myId
-                                        store.addOrUpdate(copy)
-                                        if (copy.forPartner) scope.launch { engine.sendCountdown(copy) }
-                                        refresh()
-                                    },
-                                    onRing = {
-                                        if (!isMuted() && e.soundEnabled && e.soundName != "Silent") {
-                                            try {
-                                                alarmBeep()
-                                            } catch (ignored: Exception) {
-                                            }
-                                        }
-                                        val hasThread = e.threadEntries().isNotEmpty()
-                                        if (e.hasSecret() || hasThread || e.forPartner) secretOf = e else alarmOf = e
-                                    },
-                                    onMessages = { secretOf = e },
-                                    onDelete = { confirmDelete = e }
-                                )
+                CountdownContent(
+                    modifier = Modifier.weight(1f),
+                    shown = shown,
+                    mainTab = mainTab,
+                    viewMode = viewMode,
+                    query = query,
+                    filter = filter,
+                    now = now,
+                    today = today,
+                    store = store,
+                    myId = myId,
+                    month = calMonth,
+                    selectedDay = calDay,
+                    undoItem = undoItem,
+                    fontScale = fontScale,
+                    onMonth = { calMonth = it },
+                    onDay = { calDay = it; refresh() },
+                    onUndo = { deleted ->
+                        store.addOrUpdate(deleted)
+                        undoItem = null
+                        refresh()
+                    },
+                    onDismissUndo = { undoItem = null },
+                    onCreate = {
+                        val item = EventItem()
+                        item.date = LocalDate.now().plusDays(7)
+                        item.senderId = myId
+                        item.forPartner = pair.isPaired()
+                        editing = item
+                        editIsNew = true
+                    },
+                    onOpenSecret = { secretOf = it },
+                    onEdit = { editing = it.copyFromJson(); editIsNew = false },
+                    onDuplicate = { event ->
+                        val copy = event.copyFromJson()
+                        copy.id = UUID.randomUUID().toString().replace("-", "")
+                        copy.title = event.title + " (copy)"
+                        copy.createdAt = LocalDateTime.now()
+                        copy.senderId = myId
+                        store.addOrUpdate(copy)
+                        if (copy.forPartner) scope.launch { engine.sendCountdown(copy) }
+                        refresh()
+                    },
+                    onRing = { event ->
+                        if (!isMuted() && event.soundEnabled && event.soundName != "Silent") {
+                            try {
+                                alarmBeep()
+                            } catch (ignored: Exception) {
                             }
                         }
-                    }
-                }
+                        val hasThread = event.threadEntries().isNotEmpty()
+                        if (event.hasSecret() || hasThread || event.forPartner) secretOf = event else alarmOf = event
+                    },
+                    onMessages = { secretOf = it },
+                    onDelete = { confirmDelete = it }
+                )
             }
             // Approachable extended FAB: label + icon, always visible above content.
             ExtendedFloatingActionButton(

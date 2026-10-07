@@ -10,7 +10,7 @@ This is the release gate for Secount as a personal software product.
 - [x] Authenticated ENC2 payload support exists.
 - [x] QA matrix is tracked in docs/QA.md.
 - [ ] Continue decomposing the remaining screen and state logic in App.kt.
-- [ ] Complete a fresh full static/security review after each major release.
+- [x] Complete a fresh full static/security review for the 1.1.2 biometric release; no open CodeQL alerts remain.
 - [x] Add deterministic malformed-input coverage for import and encrypted payload parsers.
 
 ## Automated validation
@@ -21,9 +21,9 @@ This is the release gate for Secount as a personal software product.
 - [x] SHA-256 release checksums.
 - [x] CodeQL workflow.
 - [x] Dependabot.
-- [ ] Confirm the latest post-change CI run is green.
-- [ ] Confirm the latest CodeQL run is clean and the local-authentication alert is resolved.
-- [ ] Validate a fresh tagged release from a clean runner.
+- [x] Confirm the latest post-change CI run is green.
+- [x] Confirm the latest CodeQL run is clean and the local-authentication alert is resolved.
+- [x] Validate a fresh tagged release from a clean runner.
 
 ## Product validation
 

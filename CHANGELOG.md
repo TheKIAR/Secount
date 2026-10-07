@@ -4,6 +4,10 @@ All notable Secount product changes are recorded here.
 
 ## Unreleased
 
+### UI decomposition
+
+- Extracted the app header, browse controls, settings drawer, and countdown list/empty states from App.kt into shared UI components.
+
 ## [1.1.2] - 2026-10-07
 
 ### Biometric authentication

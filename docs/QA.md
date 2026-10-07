@@ -11,11 +11,12 @@ This is the verification checklist for the personal Secount product. Automated t
 - [x] Wrong-key rejection
 - [x] Backup encryption round-trip
 - [x] Deterministic malformed import and encrypted-payload inputs
+- [x] Android Keystore biometric proof encryption, verification, and tamper rejection
 - [x] Countdown leap-day and expiry cases
 - [x] Monthly short-month rollover
 - [x] Invalid time normalization
-- [ ] CodeQL result reviewed and findings triaged
-- [ ] Release workflow completed successfully for the current version tag
+- [x] CodeQL result reviewed and findings triaged
+- [x] Release workflow completed successfully for the current version tag
 
 ## Android
 
