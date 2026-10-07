@@ -33,7 +33,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
@@ -186,6 +190,41 @@ internal fun HeroStat(value: String, label: String, modifier: Modifier = Modifie
             Text(value, fontWeight = FontWeight.Bold, fontSize = scaled(19.sp, fontScale), color = Color.White)
             Text(label, fontSize = scaled(11.sp, fontScale), color = Color.White.copy(alpha = 0.9f))
         }
+    }
+}
+
+@Composable
+internal fun BrandMark(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val ringInset = size.minDimension * 0.1f
+        val ringSize = size.minDimension - ringInset * 2f
+        val strokeWidth = size.minDimension * 0.075f
+        drawArc(
+            brush = Brush.sweepGradient(listOf(Color(0xFFFF5D97), Color(0xFF7C6CFF), Color(0xFFFF5D97))),
+            startAngle = -82f,
+            sweepAngle = 326f,
+            useCenter = false,
+            topLeft = Offset(ringInset, ringInset),
+            size = Size(ringSize, ringSize),
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+        )
+        val centerX = size.width / 2f
+        val centerY = size.height / 2f
+        val halfWidth = size.width * 0.18f
+        val halfHeight = size.height * 0.29f
+        val neck = size.height * 0.055f
+        val hourglass = Path().apply {
+            moveTo(centerX - halfWidth, centerY - halfHeight)
+            lineTo(centerX + halfWidth, centerY - halfHeight)
+            lineTo(centerX + neck, centerY - neck)
+            lineTo(centerX + neck, centerY + neck)
+            lineTo(centerX + halfWidth, centerY + halfHeight)
+            lineTo(centerX - halfWidth, centerY + halfHeight)
+            lineTo(centerX - neck, centerY + neck)
+            lineTo(centerX - neck, centerY - neck)
+            close()
+        }
+        drawPath(hourglass, Color(0xFFFFF3F7))
     }
 }
 

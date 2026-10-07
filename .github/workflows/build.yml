@@ -60,6 +60,26 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.13"
+      - name: Configure Android release signing
+        shell: pwsh
+        env:
+          SECOUNT_UPLOAD_KEYSTORE_BASE64: ${{ secrets.SECOUNT_UPLOAD_KEYSTORE_BASE64 }}
+          SECOUNT_UPLOAD_STORE_PASSWORD: ${{ secrets.SECOUNT_UPLOAD_STORE_PASSWORD }}
+          SECOUNT_UPLOAD_KEY_ALIAS: ${{ secrets.SECOUNT_UPLOAD_KEY_ALIAS }}
+          SECOUNT_UPLOAD_KEY_PASSWORD: ${{ secrets.SECOUNT_UPLOAD_KEY_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SECOUNT_UPLOAD_KEYSTORE_BASE64)) {
+            Write-Host "Android signing secrets are not configured; CI will retain the unsigned APK output."
+            exit 0
+          }
+          $required = @($env:SECOUNT_UPLOAD_STORE_PASSWORD, $env:SECOUNT_UPLOAD_KEY_ALIAS, $env:SECOUNT_UPLOAD_KEY_PASSWORD)
+          if ($required | Where-Object { [string]::IsNullOrWhiteSpace($_) }) { throw "Android signing secrets are incomplete." }
+          $keystore = Join-Path $env:RUNNER_TEMP "secount-upload.jks"
+          [IO.File]::WriteAllBytes($keystore, [Convert]::FromBase64String($env:SECOUNT_UPLOAD_KEYSTORE_BASE64))
+          "SECOUNT_UPLOAD_STORE_FILE=$keystore" >> $env:GITHUB_ENV
+          "SECOUNT_UPLOAD_STORE_PASSWORD=$env:SECOUNT_UPLOAD_STORE_PASSWORD" >> $env:GITHUB_ENV
+          "SECOUNT_UPLOAD_KEY_ALIAS=$env:SECOUNT_UPLOAD_KEY_ALIAS" >> $env:GITHUB_ENV
+          "SECOUNT_UPLOAD_KEY_PASSWORD=$env:SECOUNT_UPLOAD_KEY_PASSWORD" >> $env:GITHUB_ENV
       - name: Build desktop JAR, Windows EXE and Android release APK
         shell: pwsh
         run: |

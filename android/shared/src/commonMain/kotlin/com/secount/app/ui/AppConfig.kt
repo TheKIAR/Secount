@@ -43,3 +43,16 @@ internal fun filterEmoji(id: String): String = when (id) {
     "To partner" -> "✉ "
     else -> ""
 }
+
+internal fun pairingText(myCode: String, accountId: String): String = "SECOUNT1:$myCode:$accountId"
+
+internal fun parsePairCode(input: String): String? {
+    val normalized = input.trim().uppercase()
+    if (com.secount.app.logic.PairStore.looksLikeCode(normalized)) return normalized
+    if (normalized.startsWith("SECOUNT1:")) {
+        val parts = normalized.split(":")
+        if (parts.size >= 2 && com.secount.app.logic.PairStore.looksLikeCode(parts[1])) return parts[1]
+    }
+    return normalized.split(Regex("[^A-Z0-9]+"))
+        .firstOrNull { com.secount.app.logic.PairStore.looksLikeCode(it) }
+}

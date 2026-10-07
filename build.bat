@@ -12,11 +12,17 @@ if errorlevel 1 (
   echo DESKTOP BUILD FAILED
   exit /b 1
 )
-if exist "%~dp0android\desktopApp\build\compose\jars\Secount-windows-x64-1.0.0.jar" (
-  copy /y "%~dp0android\desktopApp\build\compose\jars\Secount-windows-x64-1.0.0.jar" "%~dp0Secount.jar" >nul
-) else (
-  copy /y "%~dp0android\desktopApp\build\compose\jars\desktopApp-windows-x64-1.0.0.jar" "%~dp0Secount.jar" >nul
+for /f "delims=" %%F in ('powershell -NoProfile -Command "Get-ChildItem '%~dp0android\desktopApp\build\compose\jars\*.jar' | Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName"') do copy /y "%%F" "%~dp0Secount.jar" >nul
+:jar_copied
+if not exist "%~dp0Secount.jar" (
+  echo DESKTOP JAR WAS NOT PRODUCED
+  exit /b 1
 )
-copy /y "%~dp0android\desktopApp\build\compose\binaries\main\exe\Secount-1.0.0.exe" "%~dp0Secount.exe" >nul
+for /f "delims=" %%F in ('powershell -NoProfile -Command "Get-ChildItem '%~dp0android\desktopApp\build\compose\binaries\main\exe\*.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName"') do copy /y "%%F" "%~dp0Secount.exe" >nul
+:exe_copied
+if not exist "%~dp0Secount.exe" (
+  echo WINDOWS EXE WAS NOT PRODUCED
+  exit /b 1
+)
 echo.
 echo BUILD OK - Secount.jar (same UI as the Android app) + Secount.exe installer.

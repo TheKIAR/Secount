@@ -3,16 +3,18 @@
 This is the release gate for Secount as a personal software product.
 
 ## Repository / code
+
 - [x] Shared Kotlin/Compose architecture exists.
 - [x] Android and Windows targets exist.
 - [x] Security regression tests exist.
 - [x] Authenticated ENC2 payload support exists.
 - [x] QA matrix is tracked in docs/QA.md.
-- [ ] Finish decomposition of the large App.kt.
+- [ ] Continue decomposing the remaining screen and state logic in App.kt.
 - [ ] Complete a fresh full static/security review after each major release.
-- [ ] Add property/fuzz tests for import and encrypted payload parsers.
+- [x] Add deterministic malformed-input coverage for import and encrypted payload parsers.
 
 ## Automated validation
+
 - [x] Shared tests in CI.
 - [x] Android release build in CI.
 - [x] Desktop JAR/EXE build in CI.
@@ -21,9 +23,10 @@ This is the release gate for Secount as a personal software product.
 - [x] Dependabot.
 - [ ] Confirm the latest post-change CI run is green.
 - [ ] Confirm the latest CodeQL run is clean.
-- [ ] Validate a fresh tagged release from a clean runner.
+- [ ] Validate a fresh tagged release from a clean runner after signing secrets are configured.
 
 ## Product validation
+
 - [ ] Android install/update test on a physical device.
 - [ ] Windows install/update test on a clean machine.
 - [ ] Real notification delivery test.

@@ -1,6 +1,19 @@
+# Changelog
+
+All notable Secount product changes are recorded here.
+
 ## Unreleased
 
+## [1.1.1] - 2026-10-07
+
+### Product fixes
+
+- Added the Secount brand mark to the shared Android and desktop app headers.
+- Kept countdown delete actions clear of the persistent New countdown button.
+- Configured signed Android releases through protected CI secrets and aligned artifact packaging with the current version.
+
 ### Security
+
 - Added authenticated ENC2 payloads with HMAC-SHA-256 integrity protection.
 - Kept ENC1 decryption compatibility for existing local data.
 - Added tamper and wrong-key regression tests.
@@ -9,6 +22,10 @@
 - Added PIN lockout regression coverage.
 
 ### Engineering
+
+- Extracted the home hero header, browser controls, startup checks, and pairing helpers from App.kt.
+- Added deterministic malformed import and encrypted-payload regression coverage.
+- Fixed Windows build output discovery for versioned JAR and EXE names.
 - Added countdown/date edge-case regression coverage.
 - Added a dedicated QA matrix for Android, Windows, synchronization, notifications and release sign-off.
 - Made CI/release Windows artifact discovery version-independent.
@@ -17,13 +34,12 @@
 - Fixed CI: CodeQL build step, screenshot retry, unsigned-APK handling.
 - Added install, backup, and FAQ guides.
 
-# Changelog
-
-All notable Secount product changes are recorded here.
+## Earlier releases
 
 ## [1.1.0] - 2026-10-06
 
 ### Product quality
+
 - Production-focused release and repository cleanup.
 - Clearer release and artifact strategy.
 - Expanded security, architecture, testing, and operational documentation.
@@ -32,6 +48,7 @@ All notable Secount product changes are recorded here.
 - Added automated checksums for release artifacts.
 
 ### Documentation
+
 - Added security policy.
 - Added contribution guidelines.
 - Added architecture documentation.
@@ -39,6 +56,7 @@ All notable Secount product changes are recorded here.
 - README repositioned Secount as a personal product project rather than coursework.
 
 ### Engineering direction
+
 - Large UI and synchronization files are now explicitly tracked as refactoring targets.
 - Security-sensitive code paths are documented as audit areas.
 - CI is designed to validate before packaging releases.

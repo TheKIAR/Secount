@@ -5,16 +5,34 @@ plugins {
     id "org.jetbrains.compose"
 }
 
+def uploadStoreFile = System.getenv("SECOUNT_UPLOAD_STORE_FILE")
+def uploadStorePassword = System.getenv("SECOUNT_UPLOAD_STORE_PASSWORD")
+def uploadKeyAlias = System.getenv("SECOUNT_UPLOAD_KEY_ALIAS")
+def uploadKeyPassword = System.getenv("SECOUNT_UPLOAD_KEY_PASSWORD")
+def hasUploadSigning = [uploadStoreFile, uploadStorePassword, uploadKeyAlias, uploadKeyPassword]
+    .every { it != null && !it.isBlank() }
+
 android {
     namespace = "com.secount.app"
     compileSdk = 36
+
+    signingConfigs {
+        if (hasUploadSigning) {
+            uploadRelease {
+                storeFile = file(uploadStoreFile)
+                storePassword = uploadStorePassword
+                keyAlias = uploadKeyAlias
+                keyPassword = uploadKeyPassword
+            }
+        }
+    }
 
     defaultConfig {
         applicationId = "com.secount.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "1.1.0"
+        versionCode = 12
+        versionName = "1.1.1"
     }
 
     buildTypes {
@@ -25,6 +43,7 @@ android {
         release {
             minifyEnabled = false
             shrinkResources = false
+            if (hasUploadSigning) signingConfig signingConfigs.uploadRelease
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

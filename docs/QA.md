@@ -10,6 +10,7 @@ This is the verification checklist for the personal Secount product. Automated t
 - [x] Tampered relay payload rejection
 - [x] Wrong-key rejection
 - [x] Backup encryption round-trip
+- [x] Deterministic malformed import and encrypted-payload inputs
 - [x] Countdown leap-day and expiry cases
 - [x] Monthly short-month rollover
 - [x] Invalid time normalization

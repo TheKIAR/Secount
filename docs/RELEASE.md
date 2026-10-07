@@ -19,7 +19,10 @@ Release artifacts should be named with the version and platform. Debug APKs are 
 
 ## Android signing
 
-CI builds without a keystore produce `androidApp-release-unsigned.apk`; CI labels it `-android-unsigned.apk` so it is never mistaken for a production download. A version-tag production release **requires** a signed `androidApp-release.apk` and the release workflow refuses to publish without one. To enable signed releases, generate a release keystore once on a trusted machine, store it plus its passwords as GitHub Actions secrets, and wire them into `release.yml` — never commit the keystore or its passwords to the repository.
+Android signing is read from `SECOUNT_UPLOAD_STORE_FILE`, `SECOUNT_UPLOAD_STORE_PASSWORD`, `SECOUNT_UPLOAD_KEY_ALIAS`, and `SECOUNT_UPLOAD_KEY_PASSWORD`. GitHub Actions reads the keystore from `SECOUNT_UPLOAD_KEYSTORE_BASE64` and the three credential secrets, writes it to the runner's temporary directory, and removes it with the runner. Never commit the keystore or print credentials in logs.
+
+The same keystore must sign every update for an installed Android app. Keep a secure offline backup of the keystore and credentials. If CI signing is not configured, ordinary CI may produce a clearly labeled unsigned APK; Android will reject it as a production install. The tagged release workflow fails closed if signing secrets are missing.
+The same keystore must sign every update for an installed Android app. Keep a secure offline backup of the keystore and credentials. If CI signing is not configured, ordinary CI may produce a clearly labeled unsigned APK; Android will reject it as a production install. The tagged release workflow fails closed if signing secrets are missing.
 
 ## Rollback
 

@@ -3,8 +3,9 @@
 ## Android
 
 1. Download the release APK from GitHub Releases (`Secount-<version>-Android.apk`).
-   Only release tags carry signed production builds; files named
-   `-android-unsigned.apk` are CI artifacts, not production downloads.
+  Do not install CI files named `-android-unsigned.apk`; Android rejects
+  unsigned release APKs. Updating an existing installation also requires the
+  same signing key as the installed copy.
 2. Open the APK on the device (Android 8 / API 26 or newer).
 3. Allow **Install unknown apps** for the browser/file manager when asked.
 4. Launch **Secount** and create your first countdown.
@@ -43,7 +44,9 @@ Desktop data lives in `%USERPROFILE%\.secount` (`events.json` plus a
 
 - **APK won't install**: confirm the file is the signed `-Android.apk`
   (not `-unsigned`), that Android 8+ is installed, and that installs from
-  your browser are allowed.
+  your browser are allowed. If Android reports a signature conflict, the
+  APK was signed with a different key; back up app data before uninstalling
+  the older copy.
 - **JAR won't start**: `java -version` must report 17+. Machines with only
   Java 8 fail silently on double-click — use `run.bat` or install JDK 17.
 - **Blank window / crash on desktop**: check

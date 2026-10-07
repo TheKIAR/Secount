@@ -8,6 +8,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -117,24 +118,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okio.Path.Companion.toPath
 
-/** Pairing payload for QR / copy-paste. */
-internal fun pairingText(myCode: String, accountId: String): String = "SECOUNT1:$myCode:$accountId"
-
-/** Accepts a raw 6-letter code or a SECOUNT1:... payload; returns the code or null. */
-internal fun parsePairCode(input: String): String? {
-    val t = input.trim().uppercase()
-    if (PairStore.looksLikeCode(t)) return t
-    if (t.startsWith("SECOUNT1:")) {
-        val parts = t.split(":")
-        if (parts.size >= 2 && PairStore.looksLikeCode(parts[1])) return parts[1]
-    }
-    // Be liberal: find any 6-char token that looks like a code.
-    for (tok in t.split(Regex("[^A-Z0-9]+"))) {
-        if (PairStore.looksLikeCode(tok)) return tok
-    }
-    return null
-}
-
 /** Pokes the Android home widget (no-op on desktop). */
 private object SecountWidgetPush {
     fun refresh(store: EventStore) {
@@ -216,33 +199,10 @@ fun App() {
 
     fun isMuted(): Boolean = muted
 
-    // Crash report + update check, once per launch.
-    LaunchedEffect(Unit) {
-        try {
-            val f = okio.FileSystem.SYSTEM
-            val p = (platformDataDir() + "/crash_log.txt").toPath()
-            if (f.exists(p)) {
-                val txt = f.read(p) { readUtf8() }
-                if (txt.isNotBlank()) crashReport = txt.take(4000)
-            }
-        } catch (ignored: Exception) {
-        }
-        try {
-            val last = prefsGet(UPDATE_CHECK_KEY)?.toLongOrNull() ?: 0L
-            if (nowSec() - last > 86400) {
-                prefsPut(UPDATE_CHECK_KEY, nowSec().toString())
-                val json = httpGetSafe("https://api.github.com/TheKIAR/Secount/releases/latest")
-                if (json != null) {
-                    val tag = Regex("\"tag_name\"\\s*:\\s*\"([^\"]+)\"").find(json)?.groupValues?.get(1)
-                    val url = Regex("\"html_url\"\\s*:\\s*\"([^\"]+)\"").find(json)?.groupValues?.get(1)
-                    if (tag != null && url != null && isNewerVersion(APP_VERSION, tag)) {
-                        updateInfo = tag to url
-                    }
-                }
-            }
-        } catch (ignored: Exception) {
-        }
-    }
+    AppStartupChecks(
+        onCrashReport = { crashReport = it },
+        onUpdateAvailable = { updateInfo = it }
+    )
 
     fun doSync() {
         if (syncing) return
@@ -492,7 +452,11 @@ fun App() {
                                 .padding(horizontal = 20.dp, vertical = 22.dp)
                         ) {
                             Column {
-                                Text("♥ Secount", fontWeight = FontWeight.Bold, fontSize = scaled(24.sp, fontScale), color = Color.White)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    BrandMark(Modifier.size(32.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Secount", fontWeight = FontWeight.Bold, fontSize = scaled(24.sp, fontScale), color = Color.White)
+                                }
                                 Spacer(Modifier.height(2.dp))
                                 Text(
                                     themeByName(themeName).tagline,
@@ -673,193 +637,48 @@ fun App() {
             Column(
                 Modifier.fillMaxSize()
             ) {
-                // ── Smart ultra-modern hero header ──
-                Box(
-                    Modifier.fillMaxWidth()
-                        .background(heroGradient())
-                        .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 18.dp)
-                ) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(onClick = {
-                                scope.launch { try {
-                                    drawerState.open()
-                                } catch (ignored: Exception) {
-                                } }
-                            }) { Text("☰", fontSize = scaled(24.sp, fontScale), color = Color.White) }
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    "${greetingFor(now.hour)} ♥",
-                                    fontSize = scaled(13.sp, fontScale),
-                                    color = Color.White.copy(alpha = 0.92f),
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    if (mainTab == "Inbox") "Your surprises, right on time"
-                                    else if (shown.isNotEmpty()) "Next up: ${shown[0].title}"
-                                    else Lang.t("appTitle"),
-                                    fontSize = scaled(21.sp, fontScale),
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                            }
-                            Surface(shape = RoundedCornerShape(16.dp), color = Color.White.copy(alpha = 0.2f)) {
-                                Text(
-                                    if (pair.isPaired()) "✉ ${pair.partnerCode()}" else if (syncing) "○ …" else "○ Offline",
-                                    color = Color.White, fontSize = scaled(12.sp, fontScale), fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(12.dp))
-                        // Approachable stat pills: glanceable, high contrast.
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            HeroStat("${store.items().size}", "saved", Modifier.weight(1f), fontScale)
-                            HeroStat("$todayN", "today", Modifier.weight(1f), fontScale)
-                            HeroStat("$weekN", "this week", Modifier.weight(1f), fontScale)
-                            HeroStat("${inboxList.size}", "inbox", Modifier.weight(1f), fontScale)
-                        }
-                        if (mainTab == "Mine" && shown.isNotEmpty()) {
-                            Spacer(Modifier.height(10.dp))
-                            val next = shown[0]
-                            Surface(
-                                shape = RoundedCornerShape(18.dp),
-                                color = Color.White,
-                                modifier = Modifier.fillMaxWidth().clickable {
-                                    if (next.isForMe(myId)) secretOf = next
-                                    else { editing = next.copyFromJson(); editIsNew = false }
-                                }
-                            ) {
-                                Row(
-                                    Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(next.displayIcon(), fontSize = scaled(28.sp, fontScale))
-                                    Spacer(Modifier.width(10.dp))
-                                    Column(Modifier.weight(1f)) {
-                                        Text(
-                                            "UP NEXT • ${next.displayCategory().uppercase()}",
-                                            fontSize = scaled(10.sp, fontScale), fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        Text(next.title, fontWeight = FontWeight.Bold, fontSize = scaled(16.sp, fontScale))
-                                        Text(
-                                            "${next.shortCountdown(today)} • ${next.dateLabel()}",
-                                            fontSize = scaled(12.sp, fontScale),
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    Column(horizontalAlignment = Alignment.End) {
-                                        Text(
-                                            next.countdownText(now),
-                                            fontFamily = FontFamily.Monospace,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = scaled(14.sp, fontScale)
-                                        )
-                                        Text(
-                                            "Tap to open →",
-                                            fontSize = scaled(11.sp, fontScale),
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                // ── Friendly tab switcher: big 52dp targets, clear selected state ──
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    SmartTab(
-                        selected = mainTab == "Mine",
-                        title = "♥ Mine",
-                        subtitle = "${store.items().count { !it.isForMe(myId) }}",
-                        onClick = { mainTab = "Mine" },
-                        modifier = Modifier.weight(1f),
-                        fontScale = fontScale
-                    )
-                    SmartTab(
-                        selected = mainTab == "Inbox",
-                        title = if (inboxList.isNotEmpty()) "💌 Inbox (${inboxList.size})" else "💌 Inbox",
-                        subtitle = if (inboxList.isNotEmpty()) "new!" else "D-day only",
-                        onClick = { mainTab = "Inbox" },
-                        modifier = Modifier.weight(1f),
-                        fontScale = fontScale
-                    )
-                }
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    SmartTab(
-                        selected = viewMode == "List",
-                        title = "☰ ${Lang.t("viewList")}",
-                        subtitle = "in order",
-                        onClick = { viewMode = "List"; calDay = null },
-                        modifier = Modifier.weight(1f),
-                        fontScale = fontScale,
-                        compact = true
-                    )
-                    SmartTab(
-                        selected = viewMode == "Calendar",
-                        title = "📅 ${Lang.t("viewCalendar")}",
-                        subtitle = "by date",
-                        onClick = { viewMode = "Calendar" },
-                        modifier = Modifier.weight(1f),
-                        fontScale = fontScale,
-                        compact = true
-                    )
-                }
-                OutlinedTextField(
-                    query, { query = it },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
-                    placeholder = { Text(Lang.t("search"), fontSize = scaled(14.sp, fontScale)) },
-                    leadingIcon = { Text("🔍", fontSize = scaled(18.sp, fontScale)) },
-                    trailingIcon = {
-                        if (query.isNotEmpty()) TextButton(onClick = { query = "" }) { Text("✕") }
+                HomeHeader(
+                    now = now,
+                    mainTab = mainTab,
+                    shown = shown,
+                    pair = pair,
+                    syncing = syncing,
+                    savedCount = store.items().size,
+                    todayCount = todayN,
+                    weekCount = weekN,
+                    inboxCount = inboxList.size,
+                    myId = myId,
+                    fontScale = fontScale,
+                    onOpenMenu = {
+                        scope.launch { try {
+                            drawerState.open()
+                        } catch (ignored: Exception) {
+                        } }
                     },
-                    singleLine = true,
-                    shape = RoundedCornerShape(28.dp)
-                )
-                // Smart filter chips: one-tap, no hidden menus. Sort stays a dropdown.
-                Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    for (f in FILTERS) {
-                        val sel = filter == f
-                        FilterChip(
-                            selected = sel,
-                            onClick = { filter = f },
-                            label = { Text(filterEmoji(f) + Lang.filterLabel(f), fontSize = scaled(13.sp, fontScale), fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                            )
-                        )
+                    onOpenNext = { next ->
+                        if (next.isForMe(myId)) secretOf = next
+                        else { editing = next.copyFromJson(); editIsNew = false }
                     }
-                }
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        if (shown.isEmpty()) "No results"
-                        else if (shown.size == 1) "1 countdown"
-                        else "${shown.size} countdowns",
-                        fontSize = scaled(12.sp, fontScale),
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f)
-                    )
-                    MappedDropDown(
-                        Lang.t("sort"), SORTS, sort, { sort = it },
-                        { Lang.sortLabel(it) }, Modifier.weight(1f)
-                    )
-                }
+                )
+                CountdownBrowserControls(
+                    mainTab = mainTab,
+                    viewMode = viewMode,
+                    query = query,
+                    filter = filter,
+                    sort = sort,
+                    mineCount = store.items().count { !it.isForMe(myId) },
+                    inboxCount = inboxList.size,
+                    shownCount = shown.size,
+                    fontScale = fontScale,
+                    onMainTab = { mainTab = it },
+                    onViewMode = {
+                        viewMode = it
+                        if (it == "List") calDay = null
+                    },
+                    onQuery = { query = it },
+                    onFilter = { filter = it },
+                    onSort = { sort = it }
+                )
                 if (viewMode == "Calendar") {
                     CalendarView(
                         month = calMonth,
@@ -951,7 +770,10 @@ fun App() {
                         }
                     }
                 } else {
-                    LazyColumn(Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 4.dp),
+                        contentPadding = PaddingValues(bottom = 96.dp)
+                    ) {
                         items(shown, key = { it.id }) { e ->
                             if (e.isForMe(myId)) {
                                 SecretInboxCard(

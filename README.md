@@ -128,12 +128,14 @@ See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for architectural boundarie
 build.bat
 ```
 
-### Android release APK
+### Android debug APK for local testing
 
 ```bat
-cd android
-gradle :androidApp:assembleRelease
+android\build-apk.bat
 ```
+
+This creates a debug APK for local testing. Installable production releases
+are signed in GitHub Actions; unsigned CI APKs are not Android install files.
 
 ### Shared tests
 

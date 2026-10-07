@@ -2,6 +2,7 @@ package com.secount.app.logic
 
 import java.time.LocalDate
 import java.time.LocalDateTime
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -115,5 +116,26 @@ class SecurityAndEdgeCaseTest {
         assertEquals("CCCCCC", pair.pendingCode())
         pair.addIncoming("DDDDDD", "some-account")
         assertTrue(pair.incoming().any { it.code == "DDDDDD" })
+    }
+
+    @Test fun malformedImportAndCipherPayloadsStayBounded() {
+        val random = Random(62026)
+        val alphabet = "{}[]:\\\",0123456789ABCXYZabcdef-._"
+        val key = PairCrypto.deriveKey("ABCDEF", "UVWXYZ")
+        repeat(256) {
+            val sample = buildString {
+                repeat(random.nextInt(0, 257)) { append(alphabet[random.nextInt(alphabet.length)]) }
+            }
+            val event = EventItem.fromJson(sample)
+            assertTrue(event.hour in 0..23)
+            assertTrue(event.minute in 0..59)
+            PairCrypto.decryptHex(key, sample)
+            BackupCrypto.decrypt("fuzz-password", sample)
+        }
+
+        for (malformed in listOf("ENC2.", "ENC2.g.00.00", "ENC2.00.00.00", "ENC1.", "ENC1.0.0")) {
+            assertNull(PairCrypto.decryptHex(key, malformed))
+            assertNull(BackupCrypto.decrypt("fuzz-password", malformed))
+        }
     }
 }
