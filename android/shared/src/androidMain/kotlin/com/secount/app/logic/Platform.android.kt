@@ -4,7 +4,14 @@ import android.content.Context
 import android.media.AudioManager
 import android.media.ToneGenerator
 import androidx.compose.ui.graphics.asImageBitmap
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
+import java.security.KeyStore
 import java.security.MessageDigest
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
 
 object AppCtx {
     var app: Context? = null
@@ -444,6 +451,84 @@ actual fun notifySecret(title: String, text: String) {
     }
 }
 
+private const val BIOMETRIC_KEY_ALIAS = "secount_biometric_unlock"
+private const val BIOMETRIC_PROOF_PREF = "secount_biometric_unlock_proof"
+private val BIOMETRIC_PROOF = "SECOUNT_BIOMETRIC_UNLOCK_V1".encodeToByteArray()
+
+private data class BiometricRequest(val cipher: Cipher, val encryptedProof: ByteArray?, val enrollProof: Boolean)
+
+private fun createBiometricKey(): SecretKey {
+    val builder = KeyGenParameterSpec.Builder(
+        BIOMETRIC_KEY_ALIAS,
+        KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+    )
+        .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+        .setUserAuthenticationRequired(true)
+        .setInvalidatedByBiometricEnrollment(true)
+    if (android.os.Build.VERSION.SDK_INT >= 30) {
+        builder.setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)
+    } else {
+        builder.setUserAuthenticationValidityDurationSeconds(-1)
+    }
+    return KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore").run {
+        init(builder.build())
+        generateKey()
+    }
+}
+
+private fun biometricRequest(): BiometricRequest {
+    val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+    var key = keyStore.getKey(BIOMETRIC_KEY_ALIAS, null) as? SecretKey
+    var payload = prefsGet(BIOMETRIC_PROOF_PREF)?.let {
+        try { android.util.Base64.decode(it, android.util.Base64.NO_WRAP) } catch (ignored: Exception) { null }
+    }
+    if (key == null) {
+        key = createBiometricKey()
+        payload = null
+    }
+
+    fun request(key: SecretKey, proof: ByteArray?): BiometricRequest {
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        if (proof == null || proof.size <= 12) {
+            cipher.init(Cipher.ENCRYPT_MODE, key)
+            return BiometricRequest(cipher, null, true)
+        }
+        val nonce = proof.copyOfRange(0, 12)
+        val encryptedProof = proof.copyOfRange(12, proof.size)
+        cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, nonce))
+        return BiometricRequest(cipher, encryptedProof, false)
+    }
+
+    return try {
+        request(key, payload)
+    } catch (e: android.security.keystore.KeyPermanentlyInvalidatedException) {
+        keyStore.deleteEntry(BIOMETRIC_KEY_ALIAS)
+        prefsRemove(BIOMETRIC_PROOF_PREF)
+        key = createBiometricKey()
+        request(key, null)
+    }
+}
+
+internal fun encryptBiometricProof(cipher: Cipher?): ByteArray? {
+    if (cipher == null) return null
+    return try {
+        val encrypted = cipher.doFinal(BIOMETRIC_PROOF)
+        cipher.iv + encrypted
+    } catch (ignored: Exception) {
+        null
+    }
+}
+
+internal fun authenticateBiometricProof(cipher: Cipher?, encryptedProof: ByteArray?): Boolean {
+    if (cipher == null || encryptedProof == null) return false
+    return try {
+        MessageDigest.isEqual(BIOMETRIC_PROOF, cipher.doFinal(encryptedProof))
+    } catch (ignored: Exception) {
+        false
+    }
+}
+
 actual fun biometricAvailable(): Boolean {
     return try {
         if (android.os.Build.VERSION.SDK_INT < 28) return false
@@ -471,6 +556,7 @@ actual fun biometricAuthenticate(onResult: (Boolean) -> Unit) {
             return
         }
         val act = AppCtx.activity ?: run { onResult(false); return }
+        val request = biometricRequest()
         val exec = act.mainExecutor
         val prompt = android.hardware.biometrics.BiometricPrompt.Builder(act)
             .setTitle("Unlock Secount")
@@ -481,10 +567,25 @@ actual fun biometricAuthenticate(onResult: (Boolean) -> Unit) {
             .build()
         val cancel = android.os.CancellationSignal()
         prompt.authenticate(
-            cancel, exec,
+            android.hardware.biometrics.BiometricPrompt.CryptoObject(request.cipher), cancel, exec,
             object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult?) {
-                    try { onResult(true) } catch (ignored: Exception) { }
+                    try {
+                        val authenticatedCipher = result?.cryptoObject?.cipher
+                        if (request.enrollProof) {
+                            val proof = encryptBiometricProof(authenticatedCipher)
+                            if (proof == null) {
+                                onResult(false)
+                            } else {
+                                prefsPut(BIOMETRIC_PROOF_PREF, android.util.Base64.encodeToString(proof, android.util.Base64.NO_WRAP))
+                                onResult(true)
+                            }
+                        } else {
+                            onResult(authenticateBiometricProof(authenticatedCipher, request.encryptedProof))
+                        }
+                    } catch (ignored: Exception) {
+                        onResult(false)
+                    }
                 }
                 override fun onAuthenticationFailed() {
                     // stay open; user can retry or use PIN

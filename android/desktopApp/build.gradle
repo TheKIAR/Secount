@@ -14,7 +14,7 @@ compose.desktop {
         mainClass = "com.secount.app.desktop.MainKt"
         nativeDistributions {
             packageName = "Secount"
-            packageVersion = "1.1.1"
+            packageVersion = "1.1.2"
             vendor = "Md. Ragib Ashhab"
             description = "Secount — personal countdown and private-moment application"
             targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe)

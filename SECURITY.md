@@ -37,4 +37,5 @@ Never commit real secrets, credentials, private backups, production pairing code
 - ENC1 payloads remain readable for backward compatibility with existing local data.
 - Pairing still uses short human-entered codes and the public ntfy relay. The pairing code is not treated as a high-entropy cryptographic secret, so this is not equivalent to a fully audited end-to-end encrypted protocol.
 - PIN verification uses salted SHA-256, constant-time comparisons, and progressive lockout after repeated failures.
-- Do not place real credentials, private keys, production tokens, or personal backup data in the repository.
+- Android biometric unlock requires a per-install Android Keystore key and an authenticated AES-GCM proof operation; changing biometric enrollment invalidates and re-enrolls the local proof.
+- Never place real credentials, private keys, production tokens, or personal backup data in the repository.

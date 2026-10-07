@@ -4,6 +4,14 @@ All notable Secount product changes are recorded here.
 
 ## Unreleased
 
+## [1.1.2] - 2026-10-07
+
+### Biometric authentication
+
+- Require an Android Keystore-backed AES-GCM operation to complete biometric unlock.
+- Enroll the encrypted proof through an authenticated prompt and reject invalidated or tampered proofs.
+- Add regression coverage for biometric proof encryption and verification.
+
 ## [1.1.1] - 2026-10-07
 
 ### Product fixes

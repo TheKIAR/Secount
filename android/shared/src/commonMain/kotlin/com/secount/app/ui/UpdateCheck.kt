@@ -7,7 +7,7 @@ import okio.Path.Companion.toPath
 /** In-app update check + crash-log helpers (extracted from App.kt, no behavior change). */
 
 internal const val UPDATE_CHECK_KEY = "secount_update_checked_at"
-internal const val APP_VERSION = "1.1.1"
+internal const val APP_VERSION = "1.1.2"
 internal const val RELEASES_URL = "https://github.com/TheKIAR/Secount/releases"
 
 @Composable

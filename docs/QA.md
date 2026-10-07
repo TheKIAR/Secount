@@ -14,8 +14,8 @@ This is the verification checklist for the personal Secount product. Automated t
 - [x] Countdown leap-day and expiry cases
 - [x] Monthly short-month rollover
 - [x] Invalid time normalization
-- [x] CodeQL result reviewed and findings triaged
-- [x] Release workflow completed successfully on a real tag
+- [ ] CodeQL result reviewed and findings triaged
+- [ ] Release workflow completed successfully for the current version tag
 
 ## Android
 

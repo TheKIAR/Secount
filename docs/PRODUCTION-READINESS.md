@@ -21,9 +21,9 @@ This is the release gate for Secount as a personal software product.
 - [x] SHA-256 release checksums.
 - [x] CodeQL workflow.
 - [x] Dependabot.
-- [x] Confirm the latest post-change CI run is green.
-- [x] Confirm the latest CodeQL run is clean.
-- [x] Validate a fresh tagged release from a clean runner.
+- [ ] Confirm the latest post-change CI run is green.
+- [ ] Confirm the latest CodeQL run is clean and the local-authentication alert is resolved.
+- [ ] Validate a fresh tagged release from a clean runner.
 
 ## Product validation
 

@@ -26,6 +26,9 @@ kotlin {
         androidMain.dependencies {
             implementation("androidx.activity:activity-compose:1.9.3")
         }
+        androidUnitTest.dependencies {
+            implementation(kotlin("test"))
+        }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
         }

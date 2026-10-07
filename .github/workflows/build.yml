@@ -33,6 +33,8 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -40,6 +42,9 @@ jobs:
       - name: Run shared tests
         shell: pwsh
         run: gradle -p android :shared:desktopTest --no-daemon
+      - name: Run biometric proof tests
+        shell: pwsh
+        run: gradle -p android :shared:testDebugUnitTest --tests com.secount.app.logic.BiometricProofTest --no-daemon
 
   build:
     name: Build all release artifacts

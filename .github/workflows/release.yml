@@ -54,6 +54,9 @@ jobs:
       - name: Test
         shell: pwsh
         run: gradle -p android :shared:desktopTest --no-daemon
+      - name: Biometric proof regression tests
+        shell: pwsh
+        run: gradle -p android :shared:testDebugUnitTest --tests com.secount.app.logic.BiometricProofTest --no-daemon
       - name: Build release artifacts
         shell: pwsh
         run: |
