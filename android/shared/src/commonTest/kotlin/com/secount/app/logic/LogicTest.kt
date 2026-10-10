@@ -225,4 +225,20 @@ class LogicTest {
         assertEquals(LocalDate.of(2026, 2, 28), m.nextOccurrence(LocalDate.of(2026, 2, 1)))
         assertEquals(LocalDate.of(2026, 3, 31), m.nextOccurrence(LocalDate.of(2026, 3, 1)))
     }
+
+    @Test
+    fun leapDayAnniversaryIsDueOnFeb28InNonLeapYears() {
+        // Anniversary gift case: a Feb 29 date must still remind on Feb 28
+        // when there is no Feb 29, matching nextOccurrence().
+        val e = EventItem()
+        e.date = LocalDate.of(2024, 2, 29)
+        e.setRepeat("yearly")
+        assertEquals(LocalDate.of(2025, 2, 28), e.nextOccurrence(LocalDate.of(2025, 2, 1)))
+        assertTrue(e.isDueToday(LocalDate.of(2025, 2, 28)))
+        assertEquals(0L, e.daysUntil(LocalDate.of(2025, 2, 28)))
+        assertEquals("Today!", e.shortCountdown(LocalDate.of(2025, 2, 28)))
+        assertFalse(e.isDueToday(LocalDate.of(2025, 2, 27)))
+        // Leap year itself still fires on Feb 29.
+        assertTrue(e.isDueToday(LocalDate.of(2024, 2, 29)))
+    }
 }

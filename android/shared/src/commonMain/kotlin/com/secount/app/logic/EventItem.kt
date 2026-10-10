@@ -131,7 +131,9 @@ class EventItem {
                 val want = minOf(date.dayOfMonth, today.lengthOfMonth())
                 today.dayOfMonth == want
             }
-            else -> date.month == today.month && date.dayOfMonth == today.dayOfMonth
+            // Leap-day anniversaries fall back to Feb 28 in non-leap years,
+            // matching nextOccurrence() so reminders fire on the right day.
+            else -> nextOccurrence(today) == today
         }
     }
 
@@ -150,7 +152,7 @@ class EventItem {
     }
 
     fun daysUntil(today: LocalDate): Long {
-        val next = if (repeatYearly) nextOccurrence(today) else date
+        val next = if (effectiveRepeat() != "once") nextOccurrence(today) else date
         return ChronoUnit.DAYS.between(today, next)
     }
 
@@ -158,7 +160,7 @@ class EventItem {
     fun progress01(today: LocalDate): Float {
         try {
             val start = createdAt.toLocalDate()
-            val end = if (repeatYearly) nextOccurrence(today) else date
+            val end = if (effectiveRepeat() != "once") nextOccurrence(today) else date
             val total = ChronoUnit.DAYS.between(start, end)
             if (total <= 0) return if (isDueToday(today)) 1f else 0f
             val done = ChronoUnit.DAYS.between(start, today)

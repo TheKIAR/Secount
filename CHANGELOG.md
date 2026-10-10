@@ -8,6 +8,12 @@ All notable Secount product changes are recorded here.
 
 - Extracted the app header, browse controls, settings drawer, and countdown list/empty states from App.kt into shared UI components.
 
+### Countdown correctness
+
+- Yearly countdowns dated Feb 29 now fire on Feb 28 in non-leap years, matching `nextOccurrence()` so anniversary reminders land on the right day.
+- `daysUntil()` and progress now key off the effective repeat mode instead of the legacy `repeatYearly` flag.
+- Added a leap-day anniversary regression test.
+
 ## [1.1.2] - 2026-10-07
 
 ### Biometric authentication
