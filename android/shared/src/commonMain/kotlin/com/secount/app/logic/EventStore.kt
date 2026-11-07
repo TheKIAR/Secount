@@ -25,7 +25,9 @@ class EventStore(dir: String, name: String = "events.json") {
         backingItems.clear()
         val pending = readItems(tempFile)
         val current = readItems(file)
-        val backup = readItems(backupFile)
+        // The backup is a recovery fallback, so avoid parsing it during normal
+        // launches when either the pending or primary snapshot is usable.
+        val backup = if (pending == null && current == null) readItems(backupFile) else null
         val (source, items) = when {
             // A complete temporary snapshot means the previous save got as
             // far as writing its contents, even if the process stopped before

@@ -34,8 +34,17 @@ class SyncLiveTest {
         private val counter = AtomicInteger(0)
         @Volatile private var running = true
         val published = CopyOnWriteArrayList<Msg>()
+        val pollQueries = CopyOnWriteArrayList<String>()
         val serverErrors = CopyOnWriteArrayList<String>()
         @Volatile var accepted = 0
+
+        fun publish(topic: String, body: String): String {
+            val id = "m" + counter.incrementAndGet()
+            val msg = Msg(id, topic, body)
+            messages.getOrPut(topic) { CopyOnWriteArrayList() }.add(msg)
+            published.add(msg)
+            return id
+        }
 
         init {
             thread(name = "fake-ntfy", isDaemon = true) {
@@ -106,12 +115,10 @@ class SyncLiveTest {
                 val since = query.split("&").firstOrNull { it.startsWith("since=") }
                     ?.substringAfter("=") ?: ""
                 val responseBody: String = if (method == "POST") {
-                    val id = "m" + counter.incrementAndGet()
-                    val m = Msg(id, topic, body)
-                    messages.getOrPut(topic) { CopyOnWriteArrayList() }.add(m)
-                    published.add(m)
+                    val id = publish(topic, body)
                     "{\"id\":\"$id\",\"time\":1}"
                 } else {
+                    pollQueries.add(query)
                     val list = messages[topic] ?: CopyOnWriteArrayList()
                     val sel = if (since == "all" || since.isEmpty()) list.toList()
                     else {
@@ -170,6 +177,23 @@ class SyncLiveTest {
         store.load()
         // start from seeds only; give unique readable names per party
         return Triple(pair, store, SyncEngine(store, pair))
+    }
+
+    @Test
+    fun syncUsesImmediateIncrementalPolls() = runBlocking {
+        val (pair, _, engine) = party("fast", dirA)
+        val inbox = PairNet.inboxTopic(pair.myCode)
+
+        engine.syncNow()
+        assertEquals("since=all&poll=1", fake.pollQueries.last())
+
+        val messageId = fake.publish(inbox, "{}")
+        engine.syncNow()
+        assertEquals("since=all&poll=1", fake.pollQueries.last())
+        assertEquals(messageId, prefsGet(pair.k("ntfy_since_") + inbox))
+
+        engine.syncNow()
+        assertEquals("since=$messageId&poll=1", fake.pollQueries.last())
     }
 
     @Test

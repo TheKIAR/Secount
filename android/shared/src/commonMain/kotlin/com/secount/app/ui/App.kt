@@ -132,6 +132,7 @@ private object SecountWidgetPush {
 
 internal val REPEATS = listOf("One-time", "Yearly", "Monthly", "Weekly")
 internal val SOUNDS = listOf("Chime", "Soft", "Silent")
+private const val SYNC_POLL_INTERVAL_MS = 5_000L
 internal val ACCENTS = listOf(
     "Auto" to "",
     "Pink" to "#FF5D97",
@@ -294,12 +295,12 @@ fun App() {
             }
         }
     }
-    // online sync every 15s when linked (reply push reliability),
-    // every 8s while waiting to pair
+    // Use short cached-message polls so partner updates show quickly without
+    // keeping a long-lived streaming request open.
     LaunchedEffect(Unit) {
         doSync()
         while (true) {
-            delay(if (pair.isPaired()) 15_000 else 8_000)
+            delay(SYNC_POLL_INTERVAL_MS)
             doSync()
         }
     }
@@ -313,16 +314,14 @@ fun App() {
     secTick
     val now = LocalDateTime.now()
     val myId = pair.accountId
-    @Suppress("UNUSED_EXPRESSION")
-    storeVer
+    val sortedItems = remember(storeVer, today) { store.sortedByNext(today) }
     // Inbox count: partner surprises due today (vanish after the day).
-    val inboxList = remember(storeVer) {
-        val t = LocalDate.now()
-        store.sortedByNext(t).filter { e -> e.isForMe(myId) && e.isDueToday(t) }
+    val inboxList = remember(storeVer, today, myId) {
+        sortedItems.filter { e -> e.isForMe(myId) && e.isDueToday(today) }
     }
-    val shown = remember(storeVer, query, filter, sort, mainTab) {
-        val t = LocalDate.now()
-        var list = store.sortedByNext(t).filter { e ->
+    val shown = remember(storeVer, today, query, filter, sort, mainTab, calDay, viewMode, myId) {
+        val t = today
+        var list = sortedItems.filter { e ->
             if (mainTab == "Inbox") {
                 // Separate inbox: only partner messages due today.
                 // Main screen never shows them; after the day they vanish.

@@ -5,6 +5,8 @@ import kotlin.random.Random
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+private const val REANNOUNCE_INTERVAL_SEC = 20L
+
 /**
  * Online pairing + delivery over plain HTTPS (ntfy.sh topics, no accounts).
  *
@@ -100,6 +102,10 @@ class PairStore(ns: String = "") {
 
     fun lastUnpairReqAt(): Long = prefsGet(k("unpair_req_at"))?.toLongOrNull() ?: 0L
     fun setLastUnpairReqAt(v: Long) = prefsPut(k("unpair_req_at"), v.toString())
+    fun lastAcceptReannounceAt(): Long = prefsGet(k("accept_reannounce_at"))?.toLongOrNull() ?: 0L
+    fun setLastAcceptReannounceAt(v: Long) = prefsPut(k("accept_reannounce_at"), v.toString())
+    fun lastSeverReannounceAt(): Long = prefsGet(k("sever_reannounce_at"))?.toLongOrNull() ?: 0L
+    fun setLastSeverReannounceAt(v: Long) = prefsPut(k("sever_reannounce_at"), v.toString())
 
     fun lastSeverTopic(): String = prefsGet(k("last_sever_topic")) ?: ""
     fun lastSeverPartnerCode(): String = prefsGet(k("last_sever_pcode")) ?: ""
@@ -336,8 +342,10 @@ class SyncEngine(private val store: EventStore, private val pair: PairStore) {
     private fun reannounceSeverIfFresh() {
         val topic = pair.lastSeverTopic()
         if (topic.isEmpty()) return
-        val age = nowSec() - pair.lastSeverAt()
+        val now = nowSec()
+        val age = now - pair.lastSeverAt()
         if (age < 0 || age > 300) return
+        if (now - pair.lastSeverReannounceAt() < REANNOUNCE_INTERVAL_SEC) return
         try {
             val body = envelope("unpair-done", "{}")
             httpPost(PairNet.BASE + "/" + topic, body, 8000)
@@ -348,6 +356,7 @@ class SyncEngine(private val store: EventStore, private val pair: PairStore) {
                 } catch (ignored: Exception) {
                 }
             }
+            pair.setLastSeverReannounceAt(now)
         } catch (ignored: Exception) {
         }
     }
@@ -547,20 +556,23 @@ class SyncEngine(private val store: EventStore, private val pair: PairStore) {
     }
 
     /**
-     * For a few minutes after linking, re-announce the accept on every sync.
-     * This covers the case where the partner's inbox cursor already moved
-     * past our first accept post.
+     * For a few minutes after linking, re-announce at a bounded interval.
+     * This covers a partner whose inbox cursor already moved past our first
+     * accept without publishing on every fast poll.
      */
     private fun reannounceAcceptIfFresh() {
         if (!pair.isPaired()) return
-        val age = nowSec() - pair.pairedAt()
+        val now = nowSec()
+        val age = now - pair.pairedAt()
         if (age < 0 || age > 300) return
+        if (now - pair.lastAcceptReannounceAt() < REANNOUNCE_INTERVAL_SEC) return
         try {
             val topic = pair.pairTopic() ?: return
             val body = envelope("pair-accept", "{\"code\":" + q(pair.myCode) + "}")
             httpPost(PairNet.BASE + "/" + topic, body, 8000)
             // Dual-channel: also drop it straight into their inbox.
             httpPost(PairNet.BASE + "/" + PairNet.inboxTopic(pair.partnerCode()), body, 8000)
+            pair.setLastAcceptReannounceAt(now)
         } catch (ignored: Exception) {
         }
     }
@@ -719,11 +731,12 @@ class SyncEngine(private val store: EventStore, private val pair: PairStore) {
     private fun pollTopic(topic: String, res: SyncResult) {
         val sinceKey = pair.k("ntfy_since_") + topic
         val since = prefsGet(sinceKey) ?: ""
-        // First poll replays the topic cache so nothing sent earlier is missed.
-        val url = if (since.isEmpty()) PairNet.BASE + "/" + topic + "/json?since=all"
-        else PairNet.BASE + "/" + topic + "/json?since=" + since
+        // Read only cached messages once and close the connection immediately;
+        // the next short poll uses this cursor to fetch only unseen messages.
+        val cursor = if (since.isEmpty()) "all" else since
+        val url = PairNet.BASE + "/" + topic + "/json?since=" + cursor + "&poll=1"
         val body = try {
-            httpGet(url, 9000)
+            httpGet(url, 5000)
         } catch (e: Exception) {
             res.offline = true
             return
