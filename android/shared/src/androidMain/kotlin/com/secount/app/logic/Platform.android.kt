@@ -1,6 +1,9 @@
 package com.secount.app.logic
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.media.AudioManager
 import android.media.ToneGenerator
 import androidx.compose.ui.graphics.asImageBitmap
@@ -143,47 +146,25 @@ actual fun openUrl(url: String) {
 actual fun widgetRefresh(eventsJson: String) {
     try {
         val ctx = AppCtx.app ?: return
-        val (title, sub) = nextUp(eventsJson)
-        ctx.getSharedPreferences("secount_widget", Context.MODE_PRIVATE).edit()
-            .putString("title", title).putString("sub", sub).apply()
+        // The widget reads the current store snapshot itself. Remove the old
+        // cached title so a pre-upgrade partner surprise cannot linger there.
+        val cache = ctx.getSharedPreferences("secount_widget", Context.MODE_PRIVATE)
+        val snapshotHash = MessageDigest.getInstance("SHA-256")
+            .digest(eventsJson.toByteArray(Charsets.UTF_8))
+            .joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
+        val changed = cache.getString("snapshot_hash", null) != snapshotHash
+        cache.edit().remove("title").remove("sub")
+            .putString("snapshot_hash", snapshotHash).apply()
+        if (!changed) return
+        val provider = ComponentName(ctx.packageName, "com.secount.app.SecountWidget")
+        val ids = AppWidgetManager.getInstance(ctx).getAppWidgetIds(provider)
+        if (ids.isEmpty()) return
+        ctx.sendBroadcast(
+            Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
+                .setComponent(provider)
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
+        )
     } catch (ignored: Exception) {
-    }
-}
-
-private fun nextUp(json: String): Pair<String, String> {
-    return try {
-        val titles = Regex("\"title\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"").findAll(json).map {
-            it.groupValues[1].replace("\\\"", "\"").replace("\\\\", "\\")
-        }.toList()
-        val dates = Regex("\"date\"\\s*:\\s*\"([0-9]{4}-[0-9]{2}-[0-9]{2})\"").findAll(json).map {
-            it.groupValues[1]
-        }.toList()
-        if (titles.isEmpty()) return "Secount" to "No countdowns yet"
-        val today = java.time.LocalDate.now()
-        var bestT = ""
-        var bestD = Long.MAX_VALUE
-        for (i in titles.indices) {
-            val ds = dates.getOrNull(i) ?: continue
-            val d = try {
-                java.time.LocalDate.parse(ds)
-            } catch (e: Exception) {
-                continue
-            }
-            if (d.isBefore(today)) continue
-            val days = java.time.temporal.ChronoUnit.DAYS.between(today, d)
-            if (days < bestD) {
-                bestD = days
-                bestT = titles[i]
-            }
-        }
-        if (bestT.isEmpty()) "Secount" to "All done — add one!"
-        else bestT to when (bestD) {
-            0L -> "Today! ♥"
-            1L -> "Tomorrow"
-            else -> "$bestD days left"
-        }
-    } catch (e: Exception) {
-        "Secount" to "Open the app"
     }
 }
 

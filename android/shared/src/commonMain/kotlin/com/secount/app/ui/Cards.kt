@@ -358,7 +358,7 @@ internal fun CalendarView(
                         val d = LocalDate.of(month.year, month.month, day)
                         var n = 0
                         for (e in store.items()) {
-                            if (e.isForMe(myId) && !e.isDueToday(today)) continue
+                            if (e.isHiddenUntilDue(myId, today)) continue
                             if (e.effectiveRepeat() == "once") {
                                 if (e.date == d) n++
                             } else if (e.nextOccurrence(today) == d || e.isDueToday(d)) n++

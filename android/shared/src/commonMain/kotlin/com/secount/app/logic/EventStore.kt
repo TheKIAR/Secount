@@ -103,30 +103,7 @@ class EventStore(dir: String, name: String = "events.json") {
     private fun readItems(path: Path): List<EventItem>? {
         return try {
             if (!fs.exists(path)) return null
-            val json = fs.read(path) { readUtf8() }.trim()
-            if (!json.startsWith("[") || !json.endsWith("]")) return null
-            val inside = json.substring(1, json.length - 1)
-            val objects = extractObjects(inside)
-            if (objects.isEmpty()) return if (inside.isBlank()) emptyList() else null
-
-            // JsonUtil.splitTopLevel treats a lone object as an object body and
-            // removes its braces. Arrays containing exactly one countdown must
-            // keep the braces so EventItem.fromJson can parse it.
-            var cursor = 0
-            for (index in objects.indices) {
-                val objectJson = objects[index]
-                val start = inside.indexOf(objectJson, cursor)
-                if (start < 0) return null
-                val separator = inside.substring(cursor, start)
-                if (index == 0) {
-                    if (separator.isNotBlank()) return null
-                } else if (separator.trim() != ",") {
-                    return null
-                }
-                cursor = start + objectJson.length
-            }
-            if (inside.substring(cursor).isNotBlank()) return null
-            objects.map { EventItem.fromJson(it) }
+            parseEventArray(fs.read(path) { readUtf8() })
         } catch (ignored: Exception) {
             null
         }
@@ -218,12 +195,9 @@ class EventStore(dir: String, name: String = "events.json") {
     fun importJson(json: String): Int {
         var count = 0
         try {
-            val t = json.trim()
-            if (!t.startsWith("[") || !t.endsWith("]")) return 0
-            val inside = t.substring(1, t.length - 1)
-            for (p in extractObjects(inside)) {
+            val parsed = parseEventArray(json) ?: return 0
+            for (e in parsed) {
                 try {
-                    val e = EventItem.fromJson(p)
                     if (e.title.isBlank()) continue
                     addOrUpdate(e)
                     count++
@@ -233,37 +207,6 @@ class EventStore(dir: String, name: String = "events.json") {
         } catch (ignored: Exception) {
         }
         return count
-    }
-
-    /** Extract top-level {...} objects (splitTopLevel strips a lone object into fields). */
-    private fun extractObjects(inside: String): List<String> {
-        val out = mutableListOf<String>()
-        var depth = 0
-        var inStr = false
-        var start = -1
-        var i = 0
-        while (i < inside.length) {
-            val c = inside[i]
-            if (inStr) {
-                if (c == '\\' && i + 1 < inside.length) i++
-                else if (c == '"') inStr = false
-            } else {
-                if (c == '"') inStr = true
-                else if (c == '{') {
-                    if (depth == 0) start = i
-                    depth++
-                } else if (c == '}') {
-                    depth--
-                    if (depth == 0 && start >= 0) {
-                        out.add(inside.substring(start, i + 1))
-                        start = -1
-                    }
-                    if (depth < 0) depth = 0
-                }
-            }
-            i++
-        }
-        return out
     }
 
     @Synchronized

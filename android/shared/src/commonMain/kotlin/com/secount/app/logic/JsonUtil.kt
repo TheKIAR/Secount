@@ -98,6 +98,37 @@ object JsonUtil {
         return parts
     }
 
+    /** Extract complete top-level JSON objects while preserving their braces. */
+    fun extractTopLevelObjects(inside: String): List<String> {
+        val out = mutableListOf<String>()
+        var depth = 0
+        var inStr = false
+        var start = -1
+        var i = 0
+        while (i < inside.length) {
+            val c = inside[i]
+            if (inStr) {
+                if (c == '\\' && i + 1 < inside.length) i++
+                else if (c == '"') inStr = false
+            } else {
+                if (c == '"') inStr = true
+                else if (c == '{') {
+                    if (depth == 0) start = i
+                    depth++
+                } else if (c == '}') {
+                    depth--
+                    if (depth == 0 && start >= 0) {
+                        out.add(inside.substring(start, i + 1))
+                        start = -1
+                    }
+                    if (depth < 0) depth = 0
+                }
+            }
+            i++
+        }
+        return out
+    }
+
     /** True if the whole string is one balanced {...} or [...] object. */
     private fun isSingleBalanced(s: String): Boolean {
         var inStr = false

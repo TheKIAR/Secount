@@ -193,6 +193,10 @@ class EventItem {
     /** True if the partner sent it to me (I reveal it at zero). */
     fun isForMe(myId: String): Boolean = forPartner && senderId.isNotEmpty() && senderId != myId
 
+    /** Partner countdowns remain hidden from glanceable countdown surfaces until their due date. */
+    fun isHiddenUntilDue(myId: String, today: LocalDate): Boolean =
+        isForMe(myId) && !isDueToday(today)
+
     fun accentColor(fallback: Color): Color {
         return parseAccent(accentHex) ?: fallback
     }
@@ -358,3 +362,9 @@ class EventItem {
         private fun pad2(v: Long): String = if (v < 10) "0$v" else "$v"
     }
 }
+
+/** Earliest countdown that may be shown on a widget or in the desktop title. */
+fun nextVisibleCountdown(items: Iterable<EventItem>, myId: String, today: LocalDate): EventItem? =
+    items.asSequence()
+        .filter { !it.isHiddenUntilDue(myId, today) && !it.isPast(today) }
+        .minByOrNull { it.nextOccurrence(today) }

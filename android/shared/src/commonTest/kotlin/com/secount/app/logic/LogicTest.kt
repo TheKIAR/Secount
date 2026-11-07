@@ -77,6 +77,39 @@ class LogicTest {
     }
 
     @Test
+    fun partnerCountdownIsHiddenUntilItsDueDate() {
+        val receiverId = "receiver"
+        val dDay = LocalDate.of(2030, 5, 9)
+        val surprise = EventItem().apply {
+            id = "partner-surprise"
+            title = "Anniversary surprise"
+            date = dDay
+            senderId = "sender"
+            forPartner = true
+            secretMessage = "A secret note"
+        }
+        val personal = EventItem().apply {
+            id = "personal-countdown"
+            title = "Personal event"
+            date = dDay.plusDays(1)
+        }
+
+        assertTrue(surprise.isHiddenUntilDue(receiverId, dDay.minusDays(1)))
+        assertEquals(personal, nextVisibleCountdown(listOf(surprise, personal), receiverId, dDay.minusDays(1)))
+        assertFalse(surprise.isHiddenUntilDue(receiverId, dDay))
+        assertEquals(surprise, nextVisibleCountdown(listOf(surprise, personal), receiverId, dDay))
+        assertTrue(surprise.isHiddenUntilDue(receiverId, dDay.plusDays(1)))
+    }
+
+    @Test
+    fun eventArrayParserPreservesOneObjectAndRejectsMalformedSeparators() {
+        val one = EventItem().apply { id = "one"; title = "One" }.toJson()
+        assertEquals("one", parseEventArray("[$one]")?.single()?.id)
+        assertEquals(null, parseEventArray("[$one,]"))
+        assertEquals(emptyList(), parseEventArray("[]"))
+    }
+
+    @Test
     fun failedSaveDoesNotLeaveNewCountdownInMemory() {
         val blockedPath = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "secount-blocked-${System.nanoTime()}"
         FileSystem.SYSTEM.write(blockedPath) { writeUtf8("not a directory") }

@@ -42,6 +42,36 @@ fun EventItem.toJson(): String {
 
 fun EventItem.copyFromJson(): EventItem = EventItem.fromJson(toJson())
 
+/** Parse a complete event array, preserving objects that contain nested JSON structures. */
+fun parseEventArray(json: String): List<EventItem>? {
+    val text = json.trim()
+    if (!text.startsWith("[") || !text.endsWith("]")) return null
+    val inside = text.substring(1, text.length - 1)
+    if (inside.isBlank()) return emptyList()
+    val objects = JsonUtil.extractTopLevelObjects(inside)
+    if (objects.isEmpty()) return null
+
+    var cursor = 0
+    for (index in objects.indices) {
+        val objectJson = objects[index]
+        val start = inside.indexOf(objectJson, cursor)
+        if (start < 0) return null
+        val separator = inside.substring(cursor, start)
+        if (index == 0) {
+            if (separator.isNotBlank()) return null
+        } else if (separator.trim() != ",") {
+            return null
+        }
+        cursor = start + objectJson.length
+    }
+    if (inside.substring(cursor).isNotBlank()) return null
+    return try {
+        objects.map { EventItem.fromJson(it) }
+    } catch (ignored: Exception) {
+        null
+    }
+}
+
 fun EventItem.Companion.fromJson(obj: String): EventItem {
     val e = EventItem()
     for (part in JsonUtil.splitTopLevel(obj.trim())) {

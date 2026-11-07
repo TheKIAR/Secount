@@ -217,18 +217,16 @@ fun App() {
                 if (res.severed) notice = "Connection severed by mutual agreement."
                 if (res.replyReceived) {
                     val target = res.replyId?.let { store.byId(it) }
-                    val title = target?.title?.takeIf { it.isNotBlank() } ?: "a secret message"
+                    val t = LocalDate.now()
+                    val syncMyId = try { pair.accountId } catch (e: Exception) { "" }
+                    val hiddenUntilDue = target?.isHiddenUntilDue(syncMyId, t) == true
+                    val title = if (hiddenUntilDue) "a secret message"
+                        else target?.title?.takeIf { it.isNotBlank() } ?: "a secret message"
                     // Auto-open the conversation so the reply is visible right away.
                     // Only when the item is visible to this device (sender always;
                     // receiver only at zero) — otherwise keep it for D-day.
-                    if (target != null) {
-                        val t = LocalDate.now()
-                        // isForMe items hidden until due; sender items always visible.
-                        val syncMyId = try { pair.accountId } catch (e: Exception) { "" }
-                        val canShow = if (target.isForMe(syncMyId)) target.isDueToday(t) else true
-                        if (canShow) {
-                            secretOf = target
-                        }
+                    if (target != null && !hiddenUntilDue) {
+                        secretOf = target
                     }
                     notice = "💬 Partner replied to '$title'. Open it to read & reply."
                     if (!isMuted()) {
@@ -330,7 +328,6 @@ fun App() {
                 // Mine tab: only my countdowns (sent + personal).
                 // Partner-created items never appear here.
                 if (e.isForMe(myId)) return@filter false
-                if (e.isForMe(myId) && !e.isDueToday(t)) return@filter false
             }
             if (calDay != null && viewMode == "Calendar") {
                 val match = if (e.effectiveRepeat() == "once") e.date == calDay
@@ -360,7 +357,7 @@ fun App() {
     var todayN = 0
     var weekN = 0
     for (e in store.items()) {
-        if (e.isForMe(myId) && !e.isDueToday(today)) continue
+        if (e.isHiddenUntilDue(myId, today)) continue
         if (e.isDueToday(today)) todayN++
         else if (!e.isPast(today) && e.daysUntil(today) <= 7) weekN++
     }
@@ -375,7 +372,7 @@ fun App() {
         if (secTick % 5 != 0) return@LaunchedEffect
         val t = LocalDate.now()
         for (e in store.items()) {
-            if (e.isForMe(myId) && !e.isDueToday(t)) continue
+            if (e.isHiddenUntilDue(myId, t)) continue
             val mine = e.isMine(myId)
             val forMe = e.isForMe(myId)
             if (e.isDueToday(t) && !shownSecrets.contains(e.id)) {
@@ -519,7 +516,7 @@ fun App() {
                     shown = shown,
                     pair = pair,
                     syncing = syncing,
-                    savedCount = store.items().size,
+                    savedCount = store.items().count { !it.isHiddenUntilDue(myId, today) },
                     todayCount = todayN,
                     weekCount = weekN,
                     inboxCount = inboxList.size,

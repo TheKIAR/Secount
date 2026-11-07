@@ -7,11 +7,14 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
+import com.secount.app.logic.nextVisibleCountdown
+import com.secount.app.logic.parseEventArray
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 /**
- * Home-screen widget: shows the next countdown. Updates when the app writes a
- * snapshot (each save), when the app resumes, and every ~30 min via
- * updatePeriodMillis (recomputed straight from events.json).
+ * Home-screen widget: shows the next visible countdown. Updates from the
+ * current events.json snapshot after a change, when the app resumes, or when Android refreshes it.
  */
 class SecountWidget : AppWidgetProvider() {
     override fun onUpdate(context: Context, mgr: AppWidgetManager, ids: IntArray) {
@@ -35,22 +38,10 @@ class SecountWidget : AppWidgetProvider() {
 
         private fun updateOne(context: Context, mgr: AppWidgetManager, id: Int) {
             try {
-                var title: String? = null
-                var sub: String? = null
-                try {
-                    val prefs = context.getSharedPreferences("secount_widget", Context.MODE_PRIVATE)
-                    title = prefs.getString("title", null)
-                    sub = prefs.getString("sub", null)
-                } catch (ignored: Exception) {
-                }
-                if (title.isNullOrEmpty()) {
-                    val snap = readNextFromFile(context)
-                    title = snap.first
-                    sub = snap.second
-                }
+                val (title, sub) = readNextFromFile(context)
                 val views = RemoteViews(context.packageName, R.layout.secount_widget)
-                views.setTextViewText(R.id.widget_title, title ?: "Secount")
-                views.setTextViewText(R.id.widget_sub, sub ?: "Open the app")
+                views.setTextViewText(R.id.widget_title, title)
+                views.setTextViewText(R.id.widget_sub, sub)
                 try {
                     val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
                     if (launch != null) {
@@ -71,36 +62,18 @@ class SecountWidget : AppWidgetProvider() {
             return try {
                 val f = java.io.File(context.filesDir, "events.json")
                 if (!f.exists()) return "Secount" to "No countdowns yet"
-                val txt = f.readText()
-                val titles = Regex("\"title\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"").findAll(txt).map {
-                    it.groupValues[1].replace("\\\"", "\"").replace("\\\\", "\\")
-                }.toList()
-                val dates = Regex("\"date\"\\s*:\\s*\"([0-9]{4}-[0-9]{2}-[0-9]{2})\"").findAll(txt).map {
-                    it.groupValues[1]
-                }.toList()
-                if (titles.isEmpty()) return "Secount" to "No countdowns yet"
-                val today = java.time.LocalDate.now()
-                var bestT = ""
-                var bestD = Long.MAX_VALUE
-                for (i in titles.indices) {
-                    val ds = dates.getOrNull(i) ?: continue
-                    val d = try {
-                        java.time.LocalDate.parse(ds)
-                    } catch (e: Exception) {
-                        continue
-                    }
-                    if (d.isBefore(today)) continue
-                    val days = java.time.temporal.ChronoUnit.DAYS.between(today, d)
-                    if (days < bestD) {
-                        bestD = days
-                        bestT = titles[i]
-                    }
-                }
-                if (bestT.isEmpty()) "Secount" to "All done — add one!"
-                else bestT to when (bestD) {
+                val events = parseEventArray(f.readText())
+                    ?: return "Secount" to "Open the app"
+                val today = LocalDate.now()
+                val myId = context.getSharedPreferences("secount", Context.MODE_PRIVATE)
+                    .getString("acct_id", "").orEmpty()
+                val best = nextVisibleCountdown(events, myId, today)
+                    ?: return "Secount" to "No countdowns yet"
+                val days = ChronoUnit.DAYS.between(today, best.nextOccurrence(today))
+                best.title to when (days) {
                     0L -> "Today! ♥"
                     1L -> "Tomorrow"
-                    else -> "$bestD days left"
+                    else -> "$days days left"
                 }
             } catch (e: Exception) {
                 "Secount" to "Open the app"

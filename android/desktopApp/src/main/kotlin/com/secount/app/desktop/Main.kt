@@ -5,9 +5,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import com.secount.app.logic.nextVisibleCountdown
+import com.secount.app.logic.parseEventArray
+import com.secount.app.logic.prefsGet
 import com.secount.app.ui.App
 import java.awt.event.WindowFocusListener
 import java.awt.event.WindowEvent
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 fun main() {
     // Crash log: capture uncaught exceptions; App.kt offers to copy/share it.
@@ -76,33 +81,12 @@ private fun nextUpTitle(): String {
         val home = System.getProperty("user.home") ?: "."
         val f = java.io.File("$home/.secount/events.json")
         if (!f.exists()) return "Secount ♥ Countdowns"
-        val txt = f.readText()
-        // Minimal scan: find "title" values and "date" values in order.
-        val titles = Regex("\"title\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"").findAll(txt).map {
-            it.groupValues[1].replace("\\\"", "\"").replace("\\\\", "\\")
-        }.toList()
-        val dates = Regex("\"date\"\\s*:\\s*\"([0-9]{4}-[0-9]{2}-[0-9]{2})\"").findAll(txt).map {
-            it.groupValues[1]
-        }.toList()
-        if (titles.isEmpty()) return "Secount ♥ Countdowns"
-        val today = java.time.LocalDate.now()
-        var bestT = ""
-        var bestD = Long.MAX_VALUE
-        for (i in titles.indices) {
-            val ds = dates.getOrNull(i) ?: continue
-            val d = try {
-                java.time.LocalDate.parse(ds)
-            } catch (e: Exception) {
-                continue
-            }
-            if (d.isBefore(today)) continue
-            val days = java.time.temporal.ChronoUnit.DAYS.between(today, d)
-            if (days < bestD) {
-                bestD = days
-                bestT = titles[i]
-            }
-        }
-        if (bestT.isEmpty()) "Secount ♥ Countdowns" else "Secount ♥ $bestT — ${if (bestD == 0L) "today!" else if (bestD == 1L) "tomorrow" else "$bestD days"}"
+        val events = parseEventArray(f.readText()) ?: return "Secount ♥ Countdowns"
+        val today = LocalDate.now()
+        val best = nextVisibleCountdown(events, prefsGet("acct_id").orEmpty(), today)
+            ?: return "Secount ♥ Countdowns"
+        val days = ChronoUnit.DAYS.between(today, best.nextOccurrence(today))
+        "Secount ♥ ${best.title} — ${if (days == 0L) "today!" else if (days == 1L) "tomorrow" else "$days days"}"
     } catch (e: Exception) {
         "Secount ♥ Countdowns"
     }
