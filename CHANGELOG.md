@@ -4,6 +4,11 @@ All notable Secount product changes are recorded here.
 
 ## Unreleased
 
+### Partner surprises
+
+- Keep received partner countdowns hidden across app screens, counts, notifications, the Android widget, and desktop title until D-day.
+- Use one shared JSON parser and visibility rule for glanceable countdown surfaces.
+
 ### UI decomposition
 
 - Extracted the app header, browse controls, settings drawer, and countdown list/empty states from App.kt into shared UI components.
