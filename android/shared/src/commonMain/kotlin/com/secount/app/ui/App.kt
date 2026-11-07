@@ -646,24 +646,27 @@ fun App() {
                             saved.touchUpdated(nowSec())
                         } catch (ignored: Exception) {
                         }
-                        store.addOrUpdate(saved)
-                        if (send) scope.launch {
-                            engine.sendCountdown(saved)
-                            // Photo sync: queue compressed thumbnail chunks.
-                            try {
-                                if (saved.photoUri.isNotEmpty()) {
-                                    val b64 = try { photoToB64(saved.photoUri) } catch (e: Exception) { null }
-                                    if (b64 != null && b64.isNotEmpty()) {
-                                        engine.queuePhoto(saved.id, b64)
-                                        // Trigger immediate chunk send via normal sync path.
-                                        try { engine.sendCountdown(saved) } catch (ignored: Exception) { }
+                        if (!store.addOrUpdate(saved)) {
+                            notice = "Couldn't save this countdown on this device. Please check storage and tap SAVE to retry."
+                        } else {
+                            if (send) scope.launch {
+                                engine.sendCountdown(saved)
+                                // Photo sync: queue compressed thumbnail chunks.
+                                try {
+                                    if (saved.photoUri.isNotEmpty()) {
+                                        val b64 = try { photoToB64(saved.photoUri) } catch (e: Exception) { null }
+                                        if (b64 != null && b64.isNotEmpty()) {
+                                            engine.queuePhoto(saved.id, b64)
+                                            // Trigger immediate chunk send via normal sync path.
+                                            try { engine.sendCountdown(saved) } catch (ignored: Exception) { }
+                                        }
                                     }
+                                } catch (ignored: Exception) {
                                 }
-                            } catch (ignored: Exception) {
                             }
+                            editing = null
+                            refresh()
                         }
-                        editing = null
-                        refresh()
                     },
                     onDelete = { del ->
                         val wasShared = del.forPartner && del.isMine(myId)

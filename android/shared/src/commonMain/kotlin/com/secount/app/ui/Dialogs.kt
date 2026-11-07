@@ -481,8 +481,7 @@ internal fun EditDialog(
             Column {
                 Text(if (isNew) "✨ ${Lang.t("dlgCreate")}" else "✏ ${Lang.t("dlgEdit")}", fontWeight = FontWeight.Bold)
                 Text(
-                    if (isNew) "Name it, pick a date — done in 30 seconds."
-                    else "Everything stays saved until you tap SAVE.",
+                    "Your countdown is saved on this device when you tap SAVE.",
                     fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

@@ -2,6 +2,7 @@ package com.secount.app.logic
 
 import java.time.LocalDate
 import okio.FileSystem
+import okio.Path
 import okio.Path.Companion.toPath
 
 /**
@@ -10,8 +11,11 @@ import okio.Path.Companion.toPath
  */
 class EventStore(dir: String, name: String = "events.json") {
     private val file = "$dir/$name".toPath()
+    private val tempFile = "$file.tmp".toPath()
+    private val backupFile = "$file.bak".toPath()
     private val fs = FileSystem.SYSTEM
     private val backingItems = mutableListOf<EventItem>()
+    private var recoverySource: Path? = null
 
     @Synchronized
     fun items(): MutableList<EventItem> = backingItems
@@ -19,18 +23,23 @@ class EventStore(dir: String, name: String = "events.json") {
     @Synchronized
     fun load() {
         backingItems.clear()
-        try {
-            if (fs.exists(file)) {
-                val json = fs.read(file) { readUtf8() }.trim()
-                if (json.startsWith("[") && json.endsWith("]")) {
-                    for (part in JsonUtil.splitTopLevel(json.substring(1, json.length - 1))) {
-                        val t = part.trim()
-                        if (t.startsWith("{")) backingItems.add(EventItem.fromJson(t))
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            backingItems.clear()
+        val pending = readItems(tempFile)
+        val current = readItems(file)
+        val backup = readItems(backupFile)
+        val (source, items) = when {
+            // A complete temporary snapshot means the previous save got as
+            // far as writing its contents, even if the process stopped before
+            // it could replace events.json.
+            pending != null -> tempFile to pending
+            current != null -> file to current
+            backup != null -> backupFile to backup
+            else -> null to emptyList<EventItem>()
+        }
+        backingItems.addAll(items)
+        recoverySource = if (source != null && source != file) {
+            if (restoreSnapshot(source, current != null)) null else source
+        } else {
+            null
         }
         var changed = false
         // No samples/seeds: start empty, keep what the user created.
@@ -48,7 +57,15 @@ class EventStore(dir: String, name: String = "events.json") {
     }
 
     @Synchronized
-    fun save() {
+    fun save(): Boolean {
+        // Do not overwrite a recovered snapshot until it has been restored to
+        // the primary file. A failed restoration leaves the recovery copy
+        // untouched so the next launch can try again.
+        val pendingRecovery = recoverySource
+        if (pendingRecovery != null) {
+            if (!restoreSnapshot(pendingRecovery, readItems(file) != null)) return false
+            recoverySource = null
+        }
         try {
             file.parent?.let { if (!fs.exists(it)) fs.createDirectories(it) }
             val sb = StringBuilder("[\n")
@@ -58,23 +75,85 @@ class EventStore(dir: String, name: String = "events.json") {
                 sb.append("\n")
             }
             sb.append("]\n")
-            val tmp = "$file.tmp".toPath()
-            fs.write(tmp) { writeUtf8(sb.toString()) }
-            if (fs.exists(file)) fs.delete(file)
-            fs.atomicMove(tmp, file)
-        } catch (ignored: Exception) {
-            try {
-                val tmp = "$file.tmp".toPath()
-                if (fs.exists(tmp)) fs.delete(tmp)
-            } catch (ignored2: Exception) {
+            fs.write(tempFile) { writeUtf8(sb.toString()) }
+
+            if (fs.exists(file)) {
+                // atomicMove may not replace an existing destination on every
+                // supported filesystem. Rotate the old snapshot to a backup
+                // first, then move into an absent destination. If power is
+                // lost in between, load() can restore the temp or backup.
+                if (fs.exists(backupFile)) fs.delete(backupFile)
+                fs.atomicMove(file, backupFile)
             }
+
+            fs.atomicMove(tempFile, file)
+            recoverySource = null
+            return true
+        } catch (ignored: Exception) {
+            // Leave a complete temp/backup in place. load() validates both and
+            // recovers the newest complete snapshot on the next launch.
+            recoverySource = if (readItems(tempFile) != null) tempFile else null
+            return false
+        }
+    }
+
+    /** Parse one complete event-array snapshot, or return null if unusable. */
+    private fun readItems(path: Path): List<EventItem>? {
+        return try {
+            if (!fs.exists(path)) return null
+            val json = fs.read(path) { readUtf8() }.trim()
+            if (!json.startsWith("[") || !json.endsWith("]")) return null
+            val inside = json.substring(1, json.length - 1)
+            val objects = extractObjects(inside)
+            if (objects.isEmpty()) return if (inside.isBlank()) emptyList() else null
+
+            // JsonUtil.splitTopLevel treats a lone object as an object body and
+            // removes its braces. Arrays containing exactly one countdown must
+            // keep the braces so EventItem.fromJson can parse it.
+            var cursor = 0
+            for (index in objects.indices) {
+                val objectJson = objects[index]
+                val start = inside.indexOf(objectJson, cursor)
+                if (start < 0) return null
+                val separator = inside.substring(cursor, start)
+                if (index == 0) {
+                    if (separator.isNotBlank()) return null
+                } else if (separator.trim() != ",") {
+                    return null
+                }
+                cursor = start + objectJson.length
+            }
+            if (inside.substring(cursor).isNotBlank()) return null
+            objects.map { EventItem.fromJson(it) }
+        } catch (ignored: Exception) {
+            null
+        }
+    }
+
+    /** Restore a validated candidate without overwriting the only good copy. */
+    private fun restoreSnapshot(source: Path, primaryIsValid: Boolean): Boolean {
+        if (source == file) return true
+        return try {
+            if (fs.exists(file)) {
+                if (primaryIsValid) {
+                    if (fs.exists(backupFile)) fs.delete(backupFile)
+                    fs.atomicMove(file, backupFile)
+                } else {
+                    fs.delete(file)
+                }
+            }
+            fs.atomicMove(source, file)
+            true
+        } catch (ignored: Exception) {
+            false
         }
     }
 
     @Synchronized
-    fun addOrUpdate(item: EventItem) {
-        for (e in backingItems) {
+    fun addOrUpdate(item: EventItem): Boolean {
+        for ((index, e) in backingItems.withIndex()) {
             if (e.id == item.id) {
+                val original = e.copyFromJson()
                 e.title = item.title
                 e.date = item.date
                 e.hour = item.hour
@@ -109,13 +188,16 @@ class EventStore(dir: String, name: String = "events.json") {
                 // Don't wipe a local photo with an empty incoming one (sender
                 // without photo re-sending must not clear receiver's image).
                 if (item.photoUri.isNotEmpty()) e.photoUri = item.photoUri
-                save()
-                return
+                if (save()) return true
+                backingItems[index] = original
+                return false
             }
         }
         if (item.repeatMode.isEmpty()) item.repeatMode = if (item.repeatYearly) "yearly" else "once"
         backingItems.add(item)
-        save()
+        if (save()) return true
+        backingItems.removeAll { it.id == item.id }
+        return false
     }
 
     fun exportJson(): String {

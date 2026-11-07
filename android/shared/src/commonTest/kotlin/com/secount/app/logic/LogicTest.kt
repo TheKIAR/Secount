@@ -36,14 +36,15 @@ class LogicTest {
 
     @Test
     fun jsonRoundTrip() {
-        val store = tempStore()
+        val dir = (FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "secount-reload-${System.nanoTime()}").toString()
+        val store = EventStore(dir)
         store.load()
         val tricky = EventItem()
         tricky.title = "Quote \"test\" \\ backslash\nnewline"
         tricky.date = LocalDate.of(2030, 5, 9)
         tricky.message = "msg <with> & symbols"
         tricky.secretEnabled = true
-        tricky.secretMessage = "A private message ❤"
+        tricky.secretMessage = "A private message ❤\nwith \"quotes\" and \\slashes"
         tricky.featured = true
         tricky.repeatYearly = false
         tricky.soundEnabled = false
@@ -51,10 +52,19 @@ class LogicTest {
         tricky.accentHex = "#7C6CFF"
         tricky.category = "App Release"
         tricky.replyMessage = "Thanks!"
-        store.addOrUpdate(tricky)
+        assertTrue(store.addOrUpdate(tricky))
+        val second = EventItem().apply {
+            title = "Second countdown"
+            date = LocalDate.of(2031, 6, 10)
+        }
+        assertTrue(store.addOrUpdate(second))
 
-        val back = store.byId(tricky.id)
+        // A fresh store instance models closing and reopening the app.
+        val reloaded = EventStore(dir).also { it.load() }
+        val back = reloaded.byId(tricky.id)
         assertNotNull(back)
+        assertEquals(2, reloaded.items().size)
+        assertEquals("Second countdown", reloaded.byId(second.id)?.title)
         assertEquals(tricky.title, back.title)
         assertEquals(tricky.message, back.message)
         assertTrue(back.secretEnabled && back.secretMessage == tricky.secretMessage)
@@ -64,6 +74,77 @@ class LogicTest {
         assertEquals("#7C6CFF", back.accentHex)
         assertEquals("App Release", back.category)
         assertEquals("Thanks!", back.replyMessage)
+    }
+
+    @Test
+    fun failedSaveDoesNotLeaveNewCountdownInMemory() {
+        val blockedPath = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "secount-blocked-${System.nanoTime()}"
+        FileSystem.SYSTEM.write(blockedPath) { writeUtf8("not a directory") }
+        val store = EventStore((blockedPath / "store").toString()).also { it.load() }
+        val item = EventItem().apply {
+            id = "unsaved-countdown"
+            title = "Must be saved"
+            date = LocalDate.of(2030, 5, 9)
+        }
+
+        assertFalse(store.addOrUpdate(item))
+        assertTrue(store.items().isEmpty())
+        assertEquals(null, store.byId(item.id))
+    }
+
+    @Test
+    fun loadRecoversCompletedPendingSave() {
+        val base = (FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "secount-pending-${System.nanoTime()}").toString()
+        FileSystem.SYSTEM.createDirectories(base.toPath())
+        val current = EventItem().apply {
+            id = "same-event"
+            title = "Previous countdown"
+            date = LocalDate.of(2030, 5, 9)
+        }
+        val pending = current.copyFromJson().apply {
+            title = "New countdown"
+            secretMessage = "Saved before restart"
+            secretEnabled = true
+        }
+        FileSystem.SYSTEM.write((base + "/events.json").toPath()) {
+            writeUtf8("[${current.toJson()}]\n")
+        }
+        FileSystem.SYSTEM.write((base + "/events.json.tmp").toPath()) {
+            writeUtf8("[${pending.toJson()}]\n")
+        }
+
+        val store = EventStore(base).also { it.load() }
+        val recovered = store.byId("same-event")
+        assertNotNull(recovered)
+        assertEquals("New countdown", recovered.title)
+        assertEquals("Saved before restart", recovered.secretMessage)
+
+        val restarted = EventStore(base).also { it.load() }
+        assertEquals("Saved before restart", restarted.byId("same-event")?.secretMessage)
+    }
+
+    @Test
+    fun loadRecoversBackupWhenPrimaryIsCorrupt() {
+        val base = (FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "secount-backup-${System.nanoTime()}").toString()
+        FileSystem.SYSTEM.createDirectories(base.toPath())
+        val saved = EventItem().apply {
+            id = "backup-event"
+            title = "Recovered countdown"
+            date = LocalDate.of(2031, 6, 10)
+            secretMessage = "Backup secret"
+            secretEnabled = true
+        }
+        FileSystem.SYSTEM.write((base + "/events.json").toPath()) { writeUtf8("not valid JSON") }
+        FileSystem.SYSTEM.write((base + "/events.json.bak").toPath()) {
+            writeUtf8("[${saved.toJson()}]\n")
+        }
+
+        val store = EventStore(base).also { it.load() }
+        val recovered = store.byId("backup-event")
+        assertNotNull(recovered)
+        assertEquals("Recovered countdown", recovered.title)
+        assertEquals("Backup secret", recovered.secretMessage)
+        assertTrue(FileSystem.SYSTEM.exists((base + "/events.json").toPath()))
     }
 
     @Test
